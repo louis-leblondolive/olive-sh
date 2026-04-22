@@ -1,0 +1,179 @@
+#include "token_list.h"
+
+// ------ Segment chains ------------------------------------------------------------
+
+static segment_t *init_segment(void){
+    segment_t *res = (segment_t*)malloc(sizeof(segment_t));
+    if(!res) return NULL;
+
+    res->type = SEG_LITTERAL;           // segment is litteral by default
+    res->next = NULL;
+    res->value[0] = '\0';
+    return res;
+}
+
+
+void free_node_segment_chain(token_node_t *node){
+
+    if(!node) return;
+
+    while(node->first_seg != NULL){
+        segment_t *cache = node->first_seg->next;
+        free(node->first_seg);
+        node->first_seg = cache;
+    }
+    
+    node->last_seg = NULL;
+}
+
+
+int add_segment(token_node_t *node){
+
+    if(!node) return -1;
+
+    segment_t *new = init_segment();
+    if(!new) return -1;
+
+    if(node->first_seg == NULL){
+        node->first_seg = new;
+        node->last_seg = new;
+        new->next = NULL;
+    }
+    else {
+        node->last_seg->next = new;
+        node->last_seg = new;
+    }
+
+    return 0;
+}
+
+
+void clean_node_segment_chain(token_node_t *node){
+    if(!node || !node->first_seg) return;
+
+    // First segment
+    while(node->first_seg && node->first_seg->value[0] == '\0'){
+        segment_t *cache = node->first_seg->next;
+        free(node->first_seg);
+        node->first_seg = cache;
+    }
+
+    // Following segments
+    if(!node->first_seg) return;
+    segment_t *prev = node->first_seg;
+    segment_t *cur = node->first_seg->next;
+
+    while(cur != NULL){
+        if(cur->value[0] == '\0'){     // empty segment
+
+            segment_t *cache = cur->next;
+            free(cur);
+            prev->next = cache;
+            cur = cache;
+        }   
+        else{
+            prev = cur;
+            cur = cur->next;
+        }
+    }
+}
+
+
+segment_t *segment_chain_pop(token_node_t *node){
+
+    if(!node || !node->first_seg) return NULL;
+
+    segment_t *res = node->first_seg;
+
+    if(node->first_seg == node->last_seg) node->last_seg = NULL;        
+
+    node->first_seg = res->next;
+
+    res->next = NULL;
+    return res;
+}
+
+
+// ------ Token chains ------------------------------------------------------------
+
+
+static token_node_t *init_token_node(void){
+    token_node_t *res = (token_node_t*)malloc(sizeof(token_node_t));
+    if(!res) return NULL;
+    res->first_seg = NULL;
+    res->last_seg = NULL;
+    res->prev = NULL;
+    res->next = NULL;
+    return res;
+}
+
+
+token_chain_t *init_token_chain(void){
+
+    token_chain_t *tk_chain = (token_chain_t*)malloc(sizeof(token_chain_t));
+    if(!tk_chain) return NULL;
+
+    tk_chain->first = NULL;
+    tk_chain->last = NULL;
+
+    return tk_chain;
+}
+
+
+
+void free_token_chain(token_chain_t *tk_chain){
+
+    if(!tk_chain) return;
+
+    token_node_t *cur = tk_chain->first;
+    
+    while(cur != NULL){
+        
+        token_node_t *cache = cur->next;
+        free_node_segment_chain(cur);
+        free(cur);
+        cur = cache;
+    }
+
+    free(tk_chain);
+}
+
+
+int add_token_node(token_chain_t *tk_chain){
+
+    if(!tk_chain) return -1;
+
+    token_node_t *new = init_token_node();
+    if(!new) return -1;
+
+    if(tk_chain->first == NULL){
+        tk_chain->first = new;
+        tk_chain->last = new;
+        new->prev = NULL;
+        new->next = NULL;
+    }
+    else {
+        tk_chain->last->next = new;
+        tk_chain->last = new;
+    }
+
+    return 0;
+}
+
+
+token_node_t *token_chain_pop(token_chain_t *tk_chain){
+
+    if(!tk_chain || !tk_chain->first) return NULL;
+
+    token_node_t *res = tk_chain->first;
+
+    if(tk_chain->first == tk_chain->last) tk_chain->last = NULL;        
+
+    tk_chain->first = res->next;
+
+    if(tk_chain->first) tk_chain->first->prev = NULL; 
+
+    res->next = NULL;
+    res->prev = NULL;
+    return res;
+}
