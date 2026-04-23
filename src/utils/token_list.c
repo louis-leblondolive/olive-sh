@@ -1,6 +1,6 @@
 #include "token_list.h"
 
-// ------ Segment chains ------------------------------------------------------------
+//  ----- SEGMENT OPERATIONS -----------------------------------------------
 
 static segment_t *init_segment(void){
     segment_t *res = (segment_t*)malloc(sizeof(segment_t));
@@ -51,14 +51,14 @@ int add_segment(token_node_t *node){
 void clean_node_segment_chain(token_node_t *node){
     if(!node || !node->first_seg) return;
 
-    // First segment
+    // Remove empty leading segments
     while(node->first_seg && node->first_seg->value[0] == '\0'){
         segment_t *cache = node->first_seg->next;
         free(node->first_seg);
         node->first_seg = cache;
     }
 
-    // Following segments
+    // Remove empty segments in the rest of the chain.
     if(!node->first_seg) return;
     segment_t *prev = node->first_seg;
     segment_t *cur = node->first_seg->next;
@@ -79,23 +79,7 @@ void clean_node_segment_chain(token_node_t *node){
 }
 
 
-segment_t *segment_chain_pop(token_node_t *node){
-
-    if(!node || !node->first_seg) return NULL;
-
-    segment_t *res = node->first_seg;
-
-    if(node->first_seg == node->last_seg) node->last_seg = NULL;        
-
-    node->first_seg = res->next;
-
-    res->next = NULL;
-    return res;
-}
-
-
-// ------ Token chains ------------------------------------------------------------
-
+//  ----- TOKEN CHAINS OPERATIONS -----------------------------------------------
 
 static token_node_t *init_token_node(void){
     token_node_t *res = (token_node_t*)malloc(sizeof(token_node_t));
