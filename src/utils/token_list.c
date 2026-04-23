@@ -37,9 +37,9 @@ int add_segment(token_node_t *node){
     if(node->first_seg == NULL){
         node->first_seg = new;
         node->last_seg = new;
-        new->next = NULL;
     }
     else {
+        if(!node->last_seg) return -1;
         node->last_seg->next = new;
         node->last_seg = new;
     }
@@ -133,10 +133,9 @@ int add_token_node(token_chain_t *tk_chain){
     if(tk_chain->first == NULL){
         tk_chain->first = new;
         tk_chain->last = new;
-        new->prev = NULL;
-        new->next = NULL;
     }
     else {
+        if(!tk_chain->last) return -1;
         tk_chain->last->next = new;
         tk_chain->last = new;
     }
