@@ -6,7 +6,7 @@ static segment_t *init_segment(void){
     segment_t *res = (segment_t*)malloc(sizeof(segment_t));
     if(!res) return NULL;
 
-    res->type = SEG_LITTERAL;           // segment is litteral by default
+    res->type = SEG_LITERAL;           // segment is literal by default
     res->next = NULL;
     res->value[0] = '\0';
     return res;

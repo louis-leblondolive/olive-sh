@@ -9,7 +9,7 @@
 
 // Word segments 
 typedef enum seg_type {
-    SEG_LITTERAL,
+    SEG_LITERAL,
     SEG_VAR
 } seg_type_e;
 

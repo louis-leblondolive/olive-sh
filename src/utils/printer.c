@@ -56,7 +56,7 @@ void print_token_chain(token_chain_t *tk_chain){
             printf(" - segment chain :\n");
             for(segment_t *seg = node->first_seg; seg != NULL; seg = seg->next){
                 printf("  ");
-                if(seg->type == SEG_LITTERAL) printf("(LITTERAL)");
+                if(seg->type == SEG_LITERAL) printf("(LITERAL)");
                 else printf("(VAR)");
                 printf("[%s]", seg->value);
             }
