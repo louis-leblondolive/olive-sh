@@ -83,7 +83,12 @@ typedef struct token_chain {
 int add_segment(token_node_t *node);
 
 /**
- * @brief Frees all segments of a token node.
+ * @brief Free a segment chain.
+ */
+void free_segment_chain(segment_t *chain);
+
+/**
+ * @brief Free all segments of a token node.
  */
 void free_node_segment_chain(token_node_t *node);
 
@@ -94,6 +99,11 @@ void clean_node_segment_chain(token_node_t *node);
 
 
 //  ----- TOKEN CHAINS OPERATIONS -----------------------------------------------
+/**
+ * @brief Converts a token to its shell symbol.
+ */
+char *token_to_str(token_e token);
+
 /**
  * @brief Initialises a token chain.
  * @return A pointer to an empty token chain (with first and last node set to NULL), 

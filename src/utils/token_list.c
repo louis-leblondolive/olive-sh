@@ -13,6 +13,17 @@ static segment_t *init_segment(void){
 }
 
 
+void free_segment_chain(segment_t *chain){
+    if(!chain) return;
+    while(chain != NULL){
+        segment_t *cache = chain->next;
+        free(chain);
+        chain = cache;
+    }
+    return;
+}
+
+
 void free_node_segment_chain(token_node_t *node){
 
     if(!node) return;
@@ -80,6 +91,21 @@ void clean_node_segment_chain(token_node_t *node){
 
 
 //  ----- TOKEN CHAINS OPERATIONS -----------------------------------------------
+
+char *token_to_str(token_e token){
+    switch(token){
+        case TOKEN_WORD: return "Word"; 
+        case TOKEN_PIPE: return "'|'";     
+        case TOKEN_REDIR_IN: return "'<'";
+        case TOKEN_REDIR_OUT: return "'>'";
+        case TOKEN_HEREDOC: return "'<<'";   
+        case TOKEN_APPEND: return "'>>'";    
+        case TOKEN_AND: return "'&&'";   
+        case TOKEN_OR:  return "'||'";     
+        case TOKEN_SEQ: return "';'";
+        default: return "";
+    }
+}
 
 static token_node_t *init_token_node(void){
     token_node_t *res = (token_node_t*)malloc(sizeof(token_node_t));

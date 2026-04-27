@@ -41,6 +41,17 @@ void print_debug(char *format, ...){
 }
 
 
+void print_segment_chain(segment_t *seg_chain){
+    for(segment_t *seg = seg_chain; seg != NULL; seg = seg->next){
+        printf("  ");
+        if(seg->type == SEG_LITERAL) printf("(LITERAL)");
+        else printf("(VAR)");
+        printf("[%s]", seg->value);
+    }
+    printf("\n");
+}
+
+
 void print_token_chain(token_chain_t *tk_chain){
 
     printf("\n");
@@ -54,13 +65,7 @@ void print_token_chain(token_chain_t *tk_chain){
             printf("WORD");
             printf(RESET);
             printf(" - segment chain :\n");
-            for(segment_t *seg = node->first_seg; seg != NULL; seg = seg->next){
-                printf("  ");
-                if(seg->type == SEG_LITERAL) printf("(LITERAL)");
-                else printf("(VAR)");
-                printf("[%s]", seg->value);
-            }
-            printf("\n");
+            print_segment_chain(node->first_seg);
             break;
 
         case TOKEN_PIPE:
@@ -116,4 +121,66 @@ void print_token_chain(token_chain_t *tk_chain){
         }
     }
     printf("\n");
+}
+
+
+static void print_depth(int depth){
+    for(int i = 0; i < depth; i++){
+        printf("\t");
+    }
+}
+
+void print_ast(ast_node_t *ast, int depth){
+
+    if(!ast) return;
+
+    print_ast(ast->left, depth + 1);
+
+    if(ast->token == TOKEN_WORD){ // command node
+
+        printf(BOLD_ORANGE);
+        print_depth(depth); printf(" -- COMMAND NODE -- \n");
+        print_depth(depth); printf("COMMAND :");
+        if(ast->argv->first){
+            print_segment_chain(ast->argv->first->seg_chain);
+        } 
+       
+        
+        print_depth(depth); printf("ARGUMENTS : ");
+        printf(RESET);
+        int n = 1;
+        if(ast->argv->first){
+            arg_t *arg = ast->argv->first->next;
+            while(arg != NULL){
+                printf("  (%d)",n);
+                print_segment_chain(arg->seg_chain);
+                arg = arg->next;
+                n ++;
+            }
+        }
+        printf("\n");
+
+        printf(BOLD_ORANGE);
+        print_depth(depth); printf("REDIRS : ");
+        printf(RESET);
+        if(ast->redirs && ast->redirs->first){
+
+            redir_t *red = ast->redirs->first;
+            while(red != NULL){
+                printf("    ");
+                printf("%s : target : ", token_to_str(red->type));
+
+                print_segment_chain(red->target);
+
+                red = red->next;
+            }
+        }
+        printf("\n");
+    }
+    else {  // Operator node    
+        print_depth(depth);
+        printf("%s\n", token_to_str(ast->token));
+    }   
+
+    print_ast(ast->right, depth + 1);
 }

@@ -12,6 +12,7 @@
 #include <stdarg.h>
 
 #include "token_list.h"
+#include "ast.h"
 
 
 // Prints an error in red 
@@ -26,5 +27,7 @@ void print_debug(char *format, ...);
 // Prints a token chained list
 void print_token_chain(token_chain_t *tk_chain);
 
+// Prints an abstract syntax tree
+void print_ast(ast_node_t *ast, int depth);
 
 #endif
