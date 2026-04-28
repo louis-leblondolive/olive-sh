@@ -146,7 +146,7 @@ void free_ast(ast_node_t *root){
 
 
 int add_child_left(ast_node_t *parent, ast_node_t *child){
-    if(!parent || !child) return -1;
+    if(!parent) return -1;
 
     if(parent->left != NULL){   // replace existing left branch
         free_ast(parent->left);
@@ -158,7 +158,7 @@ int add_child_left(ast_node_t *parent, ast_node_t *child){
 
 
 int add_child_right(ast_node_t *parent, ast_node_t *child){
-    if(!parent || !child) return -1;
+    if(!parent) return -1;
 
     if(parent->right != NULL){   // replace existing right branch
         free_ast(parent->right);

@@ -138,7 +138,7 @@ void free_token_chain(token_chain_t *tk_chain){
     token_node_t *cur = tk_chain->first;
     
     while(cur != NULL){
-        
+
         token_node_t *cache = cur->next;
         free_node_segment_chain(cur);
         free(cur);

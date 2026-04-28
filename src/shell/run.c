@@ -14,10 +14,11 @@ int run_shell(){
         if(!line) continue;
         if(*line) add_history(line);
 
-        // Lex line 
+        // ----- LEXING ----------------------------------------------------- 
         tk_chain = init_token_chain();
         lex_res = build_token_list(line, strlen(line), tk_chain);
 
+        // Handle lexing error
         if(lex_res != LEX_OK){
             free_token_chain(tk_chain);
             const char *err_reason = lex_exit_status_to_str(lex_res);
@@ -32,9 +33,11 @@ int run_shell(){
         print_debug("Done lexing\n");
 
 
-        // Parse token chain 
+        // ----- PARSING -----------------------------------------------------
+
         parse_res = build_ast(tk_chain);
 
+        // Handle parsing error 
         if(!parse_res.success){
             free_token_chain(tk_chain);
             free_ast(parse_res.ast);
@@ -46,7 +49,8 @@ int run_shell(){
         print_ast(parse_res.ast, 0);
         print_debug("Done parsing\n");
 
-        // Free allocated data
+
+        // ----- FREE ALLOCATED DATA ------------------------------------------
         free_token_chain(tk_chain);
         free_ast(parse_res.ast);
     }

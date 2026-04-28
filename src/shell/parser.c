@@ -15,9 +15,11 @@ static ast_node_t *build_cmd_node(token_chain_t *tk_chain, parse_res_t *parse_re
     if(!parse_res) return NULL;
     if(!tk_chain){
         parse_res->success = false;
-        set_parse_res_error(parse_res, "unexpected EOF while parsing command");
+        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
         return NULL;
     }
+
+    if(!tk_chain->first) return NULL;   // empty chain 
 
     print_debug("Building command node\n");
 
@@ -124,7 +126,7 @@ static ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain,
     if(!parse_res) return NULL;
     if(!tk_chain){    // should never be reached
         parse_res->success = false;
-        set_parse_res_error(parse_res, "unexpected EOF near '|'");
+        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
         return NULL;
     }
     
@@ -134,7 +136,7 @@ static ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain,
 
         if(cur_ast == NULL){ // case " || cmd ... "
             parse_res->success = false;
-            set_parse_res_error(parse_res, "unexpected EOF near '|'");
+            set_parse_res_error(parse_res, "parse error near '|' : pipe source missing");
             return NULL;
         } 
 
@@ -152,7 +154,15 @@ static ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain,
         }
 
         ast_node_t *new_right = build_cmd_node(tk_chain, parse_res);
-        if(!new_right) return NULL; // parse_res error already set while parsing command node 
+        if(!parse_res->success) return NULL; // parse_res error already set while parsing command node 
+
+        if(new_right == NULL){
+            parse_res->success = false;
+            set_parse_res_error(parse_res, "parse error near '|' : pipe target missing");
+            free_ast(res);
+            free_ast(new_right);
+            return NULL;
+        }
 
         if(add_child_right(res, new_right) != 0){
             parse_res->success = false;
@@ -183,7 +193,7 @@ static ast_node_t *build_and_node(ast_node_t *cur_ast, token_chain_t *tk_chain, 
     if(!parse_res) return NULL;
     if(!tk_chain){    // should never be reached
         parse_res->success = false;
-        set_parse_res_error(parse_res, "unexpected EOF near '&&'");
+        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
         return NULL;
     }
     
@@ -193,7 +203,7 @@ static ast_node_t *build_and_node(ast_node_t *cur_ast, token_chain_t *tk_chain, 
 
         if(cur_ast == NULL){ // case " && cmd ... "
             parse_res->success = false;
-            set_parse_res_error(parse_res, "unexpected EOF near '&&'");
+            set_parse_res_error(parse_res, "parse error near '&&' : first command missing");
             return NULL;
         } 
 
@@ -242,7 +252,7 @@ static ast_node_t *build_or_node(ast_node_t *cur_ast, token_chain_t *tk_chain, p
     if(!parse_res) return NULL;
     if(!tk_chain){    // should never be reached
         parse_res->success = false;
-        set_parse_res_error(parse_res, "unexpected EOF near '||'");
+        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
         return NULL;
     }
     
@@ -252,9 +262,9 @@ static ast_node_t *build_or_node(ast_node_t *cur_ast, token_chain_t *tk_chain, p
 
         if(cur_ast == NULL){ // case " || cmd ... "
             parse_res->success = false;
-            set_parse_res_error(parse_res, "unexpected EOF near '||'");
+            set_parse_res_error(parse_res, "parse error near '||' : first command missing");
             return NULL;
-        } 
+        }
 
         token_node_t *cur_node = token_chain_pop(tk_chain); 
         free_node_segment_chain(cur_node);                    // move forward in chain
@@ -301,19 +311,13 @@ static ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, 
     if(!parse_res) return NULL;
     if(!tk_chain){    // should never be reached
         parse_res->success = false;
-        set_parse_res_error(parse_res, "unexpected EOF near ';'");
+        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
         return NULL;
     }
 
     if(tk_chain->first != NULL && tk_chain->first->token == TOKEN_SEQ){
 
         print_debug("Building seq node\n");
-
-        if(cur_ast == NULL){ // case " ; cmd ... "
-            parse_res->success = false;
-            set_parse_res_error(parse_res, "unexpected EOF near ';'");
-            return NULL;
-        } 
 
         token_node_t *cur_node = token_chain_pop(tk_chain); 
         free_node_segment_chain(cur_node);                    // move forward in chain
@@ -329,7 +333,7 @@ static ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, 
         }
 
         ast_node_t *new_right = build_or_node(NULL, tk_chain, parse_res);
-        if(!new_right) return NULL; // parse_res error already set while parsing or node 
+        if(!parse_res->success) return NULL; // parse_res error already set while parsing or node 
 
         if(add_child_right(res, new_right) != 0){
             parse_res->success = false;
@@ -361,13 +365,14 @@ parse_res_t build_ast(token_chain_t *tk_chain){
 
     parse_res_t parse_res;
     parse_res.ast = NULL;
-    set_parse_res_error(&parse_res, "");
     parse_res.success = true;
+    set_parse_res_error(&parse_res, "");
+
+    if(!tk_chain) return parse_res; // Empty input
 
     ast_node_t *cur_ast = build_seq_node(NULL, tk_chain, &parse_res);
+
     if(!cur_ast || !parse_res.success){    // error while parsing
-        free_token_chain(tk_chain);
-        free_ast(cur_ast);
         return parse_res;      
     }
 

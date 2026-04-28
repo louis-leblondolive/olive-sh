@@ -48,7 +48,6 @@ void print_segment_chain(segment_t *seg_chain){
         else printf("(VAR)");
         printf("[%s]", seg->value);
     }
-    printf("\n");
 }
 
 
@@ -66,6 +65,7 @@ void print_token_chain(token_chain_t *tk_chain){
             printf(RESET);
             printf(" - segment chain :\n");
             print_segment_chain(node->first_seg);
+            printf("\n");
             break;
 
         case TOKEN_PIPE:
@@ -144,6 +144,7 @@ void print_ast(ast_node_t *ast, int depth){
         if(ast->argv->first){
             print_segment_chain(ast->argv->first->seg_chain);
         } 
+        printf("\n");
        
         
         print_depth(depth); printf("ARGUMENTS : ");
@@ -163,8 +164,7 @@ void print_ast(ast_node_t *ast, int depth){
         printf(BOLD_ORANGE);
         print_depth(depth); printf("REDIRS : ");
         printf(RESET);
-        if(ast->redirs && ast->redirs->first){
-
+        if(ast->redirs){
             redir_t *red = ast->redirs->first;
             while(red != NULL){
                 printf("    ");
