@@ -3,10 +3,9 @@
 
 #include <stdbool.h>
 #include <string.h>
-#include <ctype.h>
 #include <assert.h>
 
-#include "token_list.h"
+#include "token_chain.h"
 #include "printer.h"
 
 

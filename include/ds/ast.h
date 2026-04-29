@@ -1,7 +1,7 @@
 #ifndef AST
 #define AST
 
-#include "token_list.h"
+#include "token_chain.h"
 
 typedef struct redir_s {
     token_e        type;
