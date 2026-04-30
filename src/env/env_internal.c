@@ -39,9 +39,11 @@ size_t env_var_count(env_t *env){
     if(!env) return 0;
     size_t count = 0;
 
-    while(*env != NULL){
+    env_t cur_var = *env;
+
+    while(cur_var != NULL){
         count ++;
-        *env = (*env)->next;
+        cur_var = cur_var->next;
     }
     return count; 
 }

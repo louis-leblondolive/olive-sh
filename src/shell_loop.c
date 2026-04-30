@@ -55,6 +55,11 @@ int run_shell(){
         // ----- EXECUTION ----------------------------------------------------
 
         int res = run_ast(&env, parse_res.ast);
+
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", res);
+        env_export(&env, "?", buf);
+
         print_info("exec res : %d\n", res);
 
         // ----- FREE ALLOCATED DATA ------------------------------------------
