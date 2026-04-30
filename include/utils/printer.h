@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdarg.h>
 
+#include "config.h"
 #include "token_chain.h"
 #include "ast.h"
 

@@ -17,6 +17,7 @@ void print_error(char *format, ...){
 }
 
 void print_info(char *format, ...){
+    if(cfg_infos.quiet) return;
     va_list args;
 
     printf(BOLD_BLUE);
@@ -29,6 +30,7 @@ void print_info(char *format, ...){
 }
 
 void print_debug(char *format, ...){
+    if(!cfg_infos.verbose) return;
     va_list args;
 
     printf(BOLD_GREEN);
@@ -52,7 +54,7 @@ void print_segment_chain(segment_t *seg_chain){
 
 
 void print_token_chain(token_chain_t *tk_chain){
-
+    if(!cfg_infos.verbose) return;
     printf("\n");
     print_debug("Lexed node chain :\n");
     for (token_node_t *node = tk_chain->first; node != NULL; node = node->next){
@@ -131,7 +133,7 @@ static void print_depth(int depth){
 }
 
 void print_ast(ast_node_t *ast, int depth){
-
+    if(!cfg_infos.verbose) return;
     if(!ast) return;
 
     print_ast(ast->left, depth + 1);

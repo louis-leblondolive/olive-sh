@@ -55,7 +55,7 @@ int run_shell(){
         // ----- EXECUTION ----------------------------------------------------
 
         int res = run_ast(&env, parse_res.ast);
-        print_debug("exec res : %d\n", res);
+        print_info("exec res : %d\n", res);
 
         // ----- FREE ALLOCATED DATA ------------------------------------------
         free_token_chain(tk_chain);
