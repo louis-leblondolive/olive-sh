@@ -22,11 +22,14 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
     // Setup redirs here
 
     for (size_t i = 0; builtins[i].name != NULL; i++){
-    if(strcmp(cmd_name, builtins[i].name) == 0)
-        return builtins[i].func(argc, argv, env);
+        if(strcmp(cmd_name, builtins[i].name) == 0){
+            int res = builtins[i].func(argc, argv, env);
+            free_arg_array(argv);
+            return res;
+        } 
     }
     
-    print_error("command not found: %s\n", cmd_name);
+    print_error("command not found: '%s'\n", cmd_name);
 
     return 0;
 
