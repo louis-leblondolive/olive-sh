@@ -90,6 +90,51 @@ void clean_node_segment_chain(token_node_t *node){
 }
 
 
+char *expand_segment_chain(env_t env, segment_t *chain){
+
+    // expand variables and calculate result total size
+    size_t res_size = 0;
+
+    segment_t *cur_seg = chain;
+    while(cur_seg != NULL){
+
+        if(cur_seg->type == SEG_VAR){
+            char *var_val = expand_var(env, cur_seg->value);
+            if(!var_val) return NULL;
+            strlcpy(cur_seg->value, var_val, MAX_WORD_LENGTH);
+            free(var_val);
+            cur_seg->type = SEG_LITERAL;
+        }
+
+        res_size += strlen(cur_seg->value);
+        cur_seg = cur_seg->next;
+    }
+
+    // building result 
+    char *res = (char*)malloc( sizeof(char) * (res_size + 1) );
+    if(!res) return NULL;
+
+    cur_seg = chain;
+    size_t pos = 0;
+
+    while(cur_seg != NULL){
+
+        size_t seg_val_len = strlen(cur_seg->value);
+        for (size_t i = 0; i < seg_val_len; i++){
+
+            res[pos] = cur_seg->value[i];
+            pos ++;
+        }
+
+        cur_seg = cur_seg->next;
+    }
+
+    res[pos] = '\0';
+
+    return res;
+}
+
+
 //  ----- TOKEN CHAINS OPERATIONS -----------------------------------------------
 
 char *token_to_str(token_e token){

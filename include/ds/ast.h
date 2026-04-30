@@ -2,6 +2,7 @@
 #define AST
 
 #include "token_chain.h"
+#include "env.h"
 
 typedef struct redir_s {
     token_e        type;
@@ -52,7 +53,8 @@ int add_redir(redir_chain_t *rd_chain);
 argv_t *init_argv(void);
 void free_argv(argv_t *argv);
 int add_arg(argv_t *argv);
-
+void free_arg_array(char **arg_arr);
+char **arg_chain_to_array(env_t env, argv_t *argv);
 
 // ----- AST OPERATIONS ------------------------------------------
 

@@ -106,6 +106,50 @@ int add_arg(argv_t *argv){
 }
 
 
+void free_arg_array(char **arg_arr){
+
+    size_t i = 0;
+    while(arg_arr[i] != NULL){
+        free(arg_arr[i]);
+        i ++;
+    }
+    free(arg_arr);
+}
+
+
+char **arg_chain_to_array(env_t env, argv_t *argv){
+    if(!argv) return NULL;
+
+    // Determine argc
+    size_t argc = 0;
+    arg_t *cur_arg = argv->first;
+    while(cur_arg != NULL){
+        argc ++;
+        cur_arg = cur_arg->next;
+    }
+
+    // Build result 
+    char **res = (char**)malloc(sizeof(char*) * (argc + 1));
+    if(!res) return NULL;
+
+    res[argc] = NULL;   // sentinel
+
+    cur_arg = argv->first;
+    for (size_t i = 0; i < argc; i++){
+
+        res[i] = expand_segment_chain(env, cur_arg->seg_chain);
+        if(!res[i]){
+            free_arg_array(res);
+            return NULL;
+        }
+
+        cur_arg = cur_arg->next;
+    }
+    
+    return res;
+}
+
+
 // ----- AST OPERATIONS ------------------------------------------
 ast_node_t *init_node(void){
     ast_node_t *new = (ast_node_t*)malloc(sizeof(ast_node_t));
