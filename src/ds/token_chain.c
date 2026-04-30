@@ -90,7 +90,7 @@ void clean_node_segment_chain(token_node_t *node){
 }
 
 
-char *expand_segment_chain(env_t env, segment_t *chain){
+char *expand_segment_chain(env_t *env, segment_t *chain){
 
     // expand variables and calculate result total size
     size_t res_size = 0;

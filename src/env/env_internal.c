@@ -35,12 +35,13 @@ void free_env_var(env_t var){
 }
 
 
-size_t env_var_count(env_t env){
+size_t env_var_count(env_t *env){
+    if(!env) return 0;
     size_t count = 0;
 
-    while(env != NULL){
+    while(*env != NULL){
         count ++;
-        env = env->next;
+        *env = (*env)->next;
     }
     return count; 
 }

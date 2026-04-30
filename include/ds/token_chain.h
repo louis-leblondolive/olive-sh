@@ -103,7 +103,7 @@ void clean_node_segment_chain(token_node_t *node);
  * @brief Expands variables into their litteral value and concatenates segments into a string.
  * @return NULL on error, the resulting string otherwise.
  */
-char *expand_segment_chain(env_t env, segment_t *chain);
+char *expand_segment_chain(env_t *env, segment_t *chain);
 
 //  ----- TOKEN CHAINS OPERATIONS -----------------------------------------------
 /**

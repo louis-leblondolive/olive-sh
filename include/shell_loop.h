@@ -5,10 +5,12 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include "env.h"
 #include "token_chain.h"
 #include "lexer.h"
 #include "ast.h"
 #include "parser.h"
+#include "executor.h"
 #include "printer.h"
 
 int run_shell();

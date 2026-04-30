@@ -117,16 +117,22 @@ void free_arg_array(char **arg_arr){
 }
 
 
-char **arg_chain_to_array(env_t env, argv_t *argv){
-    if(!argv) return NULL;
-
-    // Determine argc
-    size_t argc = 0;
+int count_args(argv_t *argv){
+    int argc = 0;
     arg_t *cur_arg = argv->first;
     while(cur_arg != NULL){
         argc ++;
         cur_arg = cur_arg->next;
     }
+
+    return argc;
+}
+
+
+char **arg_chain_to_array(env_t *env, argv_t *argv){
+    if(!argv) return NULL;
+
+    int argc = count_args(argv);
 
     // Build result 
     char **res = (char**)malloc(sizeof(char*) * (argc + 1));
@@ -134,8 +140,8 @@ char **arg_chain_to_array(env_t env, argv_t *argv){
 
     res[argc] = NULL;   // sentinel
 
-    cur_arg = argv->first;
-    for (size_t i = 0; i < argc; i++){
+    arg_t *cur_arg = argv->first;
+    for (int i = 0; i < argc; i++){
 
         res[i] = expand_segment_chain(env, cur_arg->seg_chain);
         if(!res[i]){

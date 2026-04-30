@@ -54,7 +54,8 @@ argv_t *init_argv(void);
 void free_argv(argv_t *argv);
 int add_arg(argv_t *argv);
 void free_arg_array(char **arg_arr);
-char **arg_chain_to_array(env_t env, argv_t *argv);
+int count_args(argv_t *argv);
+char **arg_chain_to_array(env_t *env, argv_t *argv);
 
 // ----- AST OPERATIONS ------------------------------------------
 

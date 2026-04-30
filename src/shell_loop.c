@@ -3,6 +3,8 @@
 
 int run_shell(){
 
+    env_t *env = NULL;
+
     token_chain_t *tk_chain;
     lex_exit_status_e lex_res;
     parse_res_t parse_res;
@@ -49,6 +51,11 @@ int run_shell(){
         print_ast(parse_res.ast, 0);
         print_debug("Done parsing\n");
 
+
+        // ----- EXECUTION ----------------------------------------------------
+
+        int res = run_ast(env, parse_res.ast);
+        print_debug("exec res : %d\n", res);
 
         // ----- FREE ALLOCATED DATA ------------------------------------------
         free_token_chain(tk_chain);

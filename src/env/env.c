@@ -74,10 +74,10 @@ int env_unset(env_t *env, char *var){
 }
 
 
-char *expand_var(env_t env, char *var){
+char *expand_var(env_t *env, char *var){
     if(!env || !var) return NULL;
 
-    env_t cur_var = env;
+    env_t cur_var = *env;
     while(cur_var != NULL){
 
         if(strcmp(cur_var->name, var) == 0){
@@ -105,7 +105,8 @@ void free_env_array(char **env_arr){
 }
 
 
-char **env_chain_to_array(env_t env){
+char **env_chain_to_array(env_t *env){
+    if(!env) return NULL;
 
     size_t var_count = env_var_count(env);
 
@@ -114,7 +115,7 @@ char **env_chain_to_array(env_t env){
 
     env_array[var_count] = NULL;    // sentinel
 
-    env_t cur_var = env;
+    env_t cur_var = *env;
     for (size_t i = 0; i < var_count; i++){
 
         env_array[i] = format_env_var(cur_var);
