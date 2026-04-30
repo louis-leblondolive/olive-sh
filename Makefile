@@ -16,6 +16,7 @@ INC_DIRS    = include \
 			  include/shell \
 			  include/utils \
 			  src/builtins \
+			  src \
 			  src/ds \
 			  src/env \
               src/shell/lexer \
