@@ -5,7 +5,7 @@
 config_infos_t cfg_infos;
 
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[], char *envp[]){
     
     // verbosity parameters 
     cfg_infos.quiet = false;
@@ -20,7 +20,7 @@ int main(int argc, char *argv[]){
         cfg_infos.verbose = false;
     }
 
-    int run_res = run_shell();
+    int run_res = run_shell(envp);
 
     return run_res;
 }

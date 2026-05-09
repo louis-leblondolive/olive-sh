@@ -1,13 +1,20 @@
 #include "shell_loop.h"
 
 
-int run_shell(){
-
-    env_t env = NULL;
+int run_shell(char **envp){
 
     token_chain_t *tk_chain;
     lex_exit_status_e lex_res;
     parse_res_t parse_res;
+
+    // Init environment 
+    env_t env = NULL;
+    int init_res = env_array_to_chain(envp, &env);
+    if(init_res != 0){
+        print_error("system error while initializing environment\n");
+        free_env(env);
+        return init_res;
+    }
 
     while(1){
 

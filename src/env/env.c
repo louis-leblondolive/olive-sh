@@ -59,7 +59,7 @@ int env_unset(env_t *env, char *var){
         if(strcmp(cur_var->name, var) == 0){ // Remove variable
 
             if(prev_var) prev_var->next = cur_var->next;
-            else *env = NULL;
+            else *env = cur_var->next;
         
             free_env_var(cur_var);
             return 0;
@@ -110,7 +110,7 @@ char **env_chain_to_array(env_t *env){
 
     size_t var_count = env_var_count(env);
 
-    char **env_array = (char**)malloc(sizeof(char*) * (var_count + 1));
+    char **env_array = (char**)calloc(var_count + 1, sizeof(char*));
     if(!env_array) return NULL;
 
     env_array[var_count] = NULL;    // sentinel
@@ -128,4 +128,27 @@ char **env_chain_to_array(env_t *env){
     }
     
     return env_array;
+}
+
+
+int env_array_to_chain(char **env_arr, env_t *env){
+    
+    if(!env_arr || !env) return -1;
+    
+    for (size_t i = 0; env_arr[i] != NULL; i++){
+        
+        char *sep = strchr(env_arr[i], '=');
+        if(!sep) return -1;
+
+        char *name = strndup(env_arr[i], sep - env_arr[i]);
+        char *value = strdup(sep + 1);
+
+        int res = env_export(env, name, value);
+        free(name);
+        free(value);
+
+        if(res != 0) return -1;
+    }
+    
+    return 0;
 }

@@ -2,6 +2,7 @@
 #define ENV
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "config.h"
@@ -21,5 +22,6 @@ int env_unset(env_t *env, char *var);
 char *expand_var(env_t *env, char *var);
 void free_env_array(char **env_arr);
 char **env_chain_to_array(env_t *env);
+int env_array_to_chain(char **env_arr, env_t *env);
 
 #endif

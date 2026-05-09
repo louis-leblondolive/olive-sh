@@ -13,6 +13,6 @@
 #include "executor.h"
 #include "printer.h"
 
-int run_shell();
+int run_shell(char **envp);
 
 #endif  
