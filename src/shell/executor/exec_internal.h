@@ -2,6 +2,7 @@
 #define EXEC_INTERNAL
 
 #include <stdbool.h>
+#include <unistd.h>
 
 #include "ast.h"
 #include "builtins.h"
