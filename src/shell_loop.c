@@ -7,6 +7,12 @@ int run_shell(char **envp){
     lex_exit_status_e lex_res;
     parse_res_t parse_res;
 
+    // Init signal handlers
+    if(init_shell_sa_handlers() != 0){
+        perror("sigaction");
+        exit(1);
+    }
+
     // Init environment 
     env_t env = NULL;
     int init_res = env_array_to_chain(envp, &env);

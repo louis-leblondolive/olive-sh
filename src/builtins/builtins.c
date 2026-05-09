@@ -7,5 +7,6 @@ builtin_t builtins[] = {
     {"unset", builtin_unset},
     {"env", builtin_env},
     {"pwd", builtin_pwd},
+    {"exit", builtin_exit},
     {NULL, NULL}
 } ;

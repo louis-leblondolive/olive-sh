@@ -84,7 +84,13 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
         
         // Child process
         case 0:     
+            if(reset_sa_handlers() != 0){
+                perror("sigaction");
+                exit(1);
+            }
+
             execve(cmd_path, argv, envp);
+            
             perror("execve");
             exit(1);
 

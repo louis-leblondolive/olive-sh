@@ -19,6 +19,7 @@ INC_DIRS    = include \
 			  src \
 			  src/ds \
 			  src/env \
+			  src/shell/signals \
               src/shell/lexer \
               src/shell/parser \
 			  src/shell/executor \

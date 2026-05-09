@@ -1,0 +1,30 @@
+#include "signals.h"
+
+
+
+int init_shell_sa_handlers(void){
+
+    // Signals to ignore
+    struct sigaction sa_ignore;
+    sa_ignore.sa_flags = SA_RESTART;
+    sa_ignore.sa_handler = SIG_IGN;
+    sigemptyset(&sa_ignore.sa_mask);
+
+    if(sigaction(SIGINT, &sa_ignore, NULL) == -1) return 1;
+
+    if(sigaction(SIGQUIT, &sa_ignore, NULL) == -1) return 1;
+
+    if(sigaction(SIGTSTP, &sa_ignore, NULL) == -1) return 1;
+
+    return 0;
+}
+
+
+int reset_sa_handlers(void){
+
+    if(signal(SIGINT, SIG_DFL) == SIG_ERR) return 1;
+    if(signal(SIGQUIT, SIG_DFL) == SIG_ERR) return 1;
+    if(signal(SIGTSTP, SIG_DFL) == SIG_ERR) return 1;
+
+    return 0;
+}

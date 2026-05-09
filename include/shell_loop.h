@@ -11,6 +11,7 @@
 #include "ast.h"
 #include "parser.h"
 #include "executor.h"
+#include "signals.h"
 #include "printer.h"
 
 int run_shell(char **envp);
