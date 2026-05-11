@@ -96,11 +96,13 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
 
         // Parent process
         default:
-            wait(&res);
+            waitpid(pid, &res, 0);
 
             free(cmd_path);
             free(envp);
 
+            if(WIFSIGNALED(res))
+                return 128 + WTERMSIG(res);
             return WEXITSTATUS(res);
     }
 

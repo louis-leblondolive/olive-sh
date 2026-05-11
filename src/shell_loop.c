@@ -24,8 +24,21 @@ int run_shell(char **envp){
 
     while(1){
 
+        if(sigsetjmp(jump_buffer, 1) != 0){
+            if(tk_chain) free_token_chain(tk_chain);
+            if(parse_res.ast) free_ast(parse_res.ast);
+            rl_free_line_state();
+            rl_cleanup_after_signal();
+        }
+
+        tk_chain = NULL;
+        parse_res.ast = NULL;
+        jump_active = 1;
+
         // Read user command line
         char *line = readline("> ");
+        jump_active = 0;
+        
         if(!line) continue;
         if(*line) add_history(line);
 
