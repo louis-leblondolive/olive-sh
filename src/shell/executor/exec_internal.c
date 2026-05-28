@@ -60,13 +60,23 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
     
 
     // ----- RUN EXTERNALS ------------------------------------------
-    char *cmd_path = find_cmd_path(env, cmd_name);
-    if(!cmd_path){
-        print_error("command not found: '%s'\n", cmd_name);
-        return 1;
+    char *cmd_path = NULL; 
+
+    if(strchr(cmd_name, '/') != NULL){
+        cmd_path = realpath(cmd_name, NULL);
+        if(!cmd_path){
+            print_error("file or directory not found: %s", cmd_name);
+            return 1;
+        }
     }
-
-
+    else{
+        cmd_path = find_cmd_path(env, cmd_name);
+        if(!cmd_path){
+            print_error("command not found: '%s'\n", cmd_name);
+            return 1;
+        }
+    }
+    
     print_debug("found command %s at %s\n", cmd_name, cmd_path);
 
     char **envp = env_chain_to_array(env);

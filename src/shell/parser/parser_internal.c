@@ -2,9 +2,24 @@
 
 void set_parse_res_error(parse_res_t *parse_res, char *fmt, ...){
     if(!parse_res || !fmt) return;
+
+    if(parse_res->error) free(parse_res->error);
+
     va_list args;
     va_start(args, fmt);
-    vsnprintf(parse_res->error, MAX_ERROR_LEN, fmt, args);
+    vasprintf(&(parse_res->error), fmt, args);
+    va_end(args);
+}
+
+
+void set_parse_res_error_info(parse_res_t *parse_res, char *fmt, ...){
+    if(!parse_res || !fmt) return;
+
+    if(parse_res->error_info) free(parse_res->error_info);
+
+    va_list args;
+    va_start(args, fmt);
+    vasprintf(&(parse_res->error_info), fmt, args);
     va_end(args);
 }
 
@@ -14,7 +29,8 @@ ast_node_t *build_cmd_node(token_chain_t *tk_chain, parse_res_t *parse_res){
     if(!parse_res) return NULL;
     if(!tk_chain){
         parse_res->success = false;
-        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
+        set_parse_res_error(parse_res, "fatal error");
+        set_parse_res_error_info(parse_res, "No token chain was provided to the parser.");
         return NULL;
     }
 
@@ -33,16 +49,19 @@ ast_node_t *build_cmd_node(token_chain_t *tk_chain, parse_res_t *parse_res){
     ast_node_t *cmd_node = init_node();     // init command node
     if(!cmd_node){
         parse_res->success = false;
-        set_parse_res_error(parse_res, "fatal error while parsing");
+        set_parse_res_error(parse_res, "fatal error");
+        set_parse_res_error_info(parse_res, "System failed to allocate AST node.");
         return NULL;
     }
 
     
     // Add command name
     if(add_arg(cmd_node->argv) != 0){
+        set_parse_res_error(parse_res, "fatal error");
+        set_parse_res_error_info(parse_res, "System failed to allocate argument node");
+
         free_ast(cmd_node);
         parse_res->success = false;
-        set_parse_res_error(parse_res, "fatal error while parsing");
         return NULL;
     }
 
@@ -72,7 +91,8 @@ ast_node_t *build_cmd_node(token_chain_t *tk_chain, parse_res_t *parse_res){
                     if(add_arg(cmd_node->argv) != 0){
                     free_ast(cmd_node);
                     parse_res->success = false;
-                    set_parse_res_error(parse_res, "fatal error while parsing");
+                    set_parse_res_error(parse_res, "fatal error");
+                    set_parse_res_error_info(parse_res, "System failed to allocate argument node.");
                     return NULL;
                     }
 
@@ -94,7 +114,8 @@ ast_node_t *build_cmd_node(token_chain_t *tk_chain, parse_res_t *parse_res){
                 if(add_redir(cmd_node->redirs) != 0){
                     free_ast(cmd_node);
                     parse_res->success = false;
-                    set_parse_res_error(parse_res, "fatal error while parsing");
+                    set_parse_res_error(parse_res, "fatal error");
+                    set_parse_res_error_info(parse_res, "System failed to allocate redirection node.");
                     return NULL;
                 }
 
@@ -125,7 +146,8 @@ ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_
     if(!parse_res) return NULL;
     if(!tk_chain){    // should never be reached
         parse_res->success = false;
-        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
+        set_parse_res_error(parse_res, "fatal error");
+        set_parse_res_error_info(parse_res, "No token chain was provided to the parser.");
         return NULL;
     }
     
@@ -135,7 +157,8 @@ ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_
 
         if(cur_ast == NULL){ // case " || cmd ... "
             parse_res->success = false;
-            set_parse_res_error(parse_res, "parse error near '|' : pipe source missing");
+            set_parse_res_error(parse_res, "parse error near '|'");
+            set_parse_res_error_info(parse_res, "'|' source is missing.");
             return NULL;
         } 
 
@@ -147,7 +170,8 @@ ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_
 
         if(!res || add_child_left(res, cur_ast) != 0){
             parse_res->success = false;
-            set_parse_res_error(parse_res, "fatal error while parsing");
+            set_parse_res_error(parse_res, "fatal error");
+            set_parse_res_error_info(parse_res, "System failed to allocate AST node.");
             free_ast(res);
             return NULL;
         }
@@ -157,7 +181,8 @@ ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_
 
         if(new_right == NULL){
             parse_res->success = false;
-            set_parse_res_error(parse_res, "parse error near '|' : pipe target missing");
+            set_parse_res_error(parse_res, "parse error near '|'");
+            set_parse_res_error_info(parse_res, "'|' target is missing.");
             free_ast(res);
             free_ast(new_right);
             return NULL;
@@ -165,7 +190,8 @@ ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_
 
         if(add_child_right(res, new_right) != 0){
             parse_res->success = false;
-            set_parse_res_error(parse_res, "fatal error while parsing");
+            set_parse_res_error(parse_res, "fatal error");
+            set_parse_res_error_info(parse_res, "System failed to allocate AST node.");
             free_ast(res);
             free_ast(new_right);
             return NULL;
@@ -192,7 +218,8 @@ ast_node_t *build_and_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
     if(!parse_res) return NULL;
     if(!tk_chain){    // should never be reached
         parse_res->success = false;
-        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
+        set_parse_res_error(parse_res, "fatal error");
+        set_parse_res_error_info(parse_res, "No token chain was provided to the parser.");
         return NULL;
     }
     
@@ -202,7 +229,8 @@ ast_node_t *build_and_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
 
         if(cur_ast == NULL){ // case " && cmd ... "
             parse_res->success = false;
-            set_parse_res_error(parse_res, "parse error near '&&' : first command missing");
+            set_parse_res_error(parse_res, "parse error near '&&'");
+            set_parse_res_error_info(parse_res, "'&&' first command is missing.");
             return NULL;
         } 
 
@@ -214,7 +242,8 @@ ast_node_t *build_and_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
 
         if(!res || add_child_left(res, cur_ast) != 0){
             parse_res->success = false;
-            set_parse_res_error(parse_res, "fatal error while parsing");
+            set_parse_res_error(parse_res, "fatal error");
+            set_parse_res_error_info(parse_res, "System failed to allocate AST node.");
             free_ast(res);
             return NULL;
         }
@@ -224,7 +253,8 @@ ast_node_t *build_and_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
 
         if(add_child_right(res, new_right) != 0){
             parse_res->success = false;
-            set_parse_res_error(parse_res, "fatal error while parsing");
+            set_parse_res_error(parse_res, "fatal error");
+            set_parse_res_error_info(parse_res, "System failed to allocate AST node.");
             free_ast(res);
             free_ast(new_right);
             return NULL;
@@ -251,7 +281,8 @@ ast_node_t *build_or_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_re
     if(!parse_res) return NULL;
     if(!tk_chain){    // should never be reached
         parse_res->success = false;
-        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
+        set_parse_res_error(parse_res, "fatal error");
+        set_parse_res_error_info(parse_res, "No token chain was provided to the parser.");
         return NULL;
     }
     
@@ -261,7 +292,8 @@ ast_node_t *build_or_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_re
 
         if(cur_ast == NULL){ // case " || cmd ... "
             parse_res->success = false;
-            set_parse_res_error(parse_res, "parse error near '||' : first command missing");
+            set_parse_res_error(parse_res, "parse error near '||'");
+            set_parse_res_error_info(parse_res, "'||' first command is missing.");
             return NULL;
         }
 
@@ -273,7 +305,8 @@ ast_node_t *build_or_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_re
 
         if(!res || add_child_left(res, cur_ast) != 0){
             parse_res->success = false;
-            set_parse_res_error(parse_res, "fatal error while parsing");
+            set_parse_res_error(parse_res, "fatal error");
+            set_parse_res_error_info(parse_res, "System failed to allocate AST node.");
             free_ast(res);
             return NULL;
         }
@@ -283,7 +316,8 @@ ast_node_t *build_or_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_re
 
         if(add_child_right(res, new_right) != 0){
             parse_res->success = false;
-            set_parse_res_error(parse_res, "fatal error while parsing");
+            set_parse_res_error(parse_res, "fatal error");
+            set_parse_res_error_info(parse_res, "System failed to allocate AST node.");
             free_ast(res);
             free_ast(new_right);
             return NULL;
@@ -310,7 +344,8 @@ ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
     if(!parse_res) return NULL;
     if(!tk_chain){    // should never be reached
         parse_res->success = false;
-        set_parse_res_error(parse_res, "fatal error while parsing : no token chain provided");
+        set_parse_res_error(parse_res, "fatal error");
+        set_parse_res_error_info(parse_res, "No token chain was provided to the parser.");
         return NULL;
     }
 
@@ -326,7 +361,8 @@ ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
 
         if(!res || add_child_left(res, cur_ast) != 0){
             parse_res->success = false;
-            set_parse_res_error(parse_res, "fatal error while parsing");
+            set_parse_res_error(parse_res, "fatal error");
+            set_parse_res_error_info(parse_res, "System failed to allocate AST node.");
             free_ast(res);
             return NULL;
         }
@@ -336,7 +372,8 @@ ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
 
         if(add_child_right(res, new_right) != 0){
             parse_res->success = false;
-            set_parse_res_error(parse_res, "fatal error while parsing");
+            set_parse_res_error(parse_res, "fatal error");
+            set_parse_res_error_info(parse_res, "System failed to allocate AST node.");
             free_ast(res);
             free_ast(new_right);
             return NULL;

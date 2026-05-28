@@ -4,18 +4,6 @@
 #include "printer.h"
 
 
-void print_error(char *format, ...){
-    va_list args;
-
-    fprintf(stderr, BOLD_RED);
-
-    va_start(args, format);
-    vfprintf(stderr, format, args);
-    va_end(args);
-
-    fprintf(stderr, RESET);
-}
-
 void print_info(char *format, ...){
     if(cfg_infos.quiet) return;
     va_list args;
@@ -40,6 +28,28 @@ void print_debug(char *format, ...){
     va_start(args, format);
     vprintf(format, args);
     va_end(args);
+}
+
+void print_hint(char *format, ...){
+    va_list args;
+
+    printf(BOLD_GREEN);
+    printf("Hint: ");
+    printf(RESET);
+
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+}
+
+
+void print_error(char *error_title, char *error_description){
+
+    fprintf(stderr, BOLD_RED);
+    fprintf(stderr, "%s", error_title);
+    fprintf(stderr, RESET);
+    fprintf(stderr, " - %s\n", error_description);
+    print_hint("Run errlog for more details.\n");
 }
 
 

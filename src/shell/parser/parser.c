@@ -7,7 +7,8 @@ parse_res_t build_ast(token_chain_t *tk_chain){
     parse_res_t parse_res;
     parse_res.ast = NULL;
     parse_res.success = true;
-    set_parse_res_error(&parse_res, "");
+    parse_res.error = NULL;
+    parse_res.error_info = NULL;
 
     if(!tk_chain) return parse_res; // Empty input
 

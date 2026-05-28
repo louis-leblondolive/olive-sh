@@ -3,8 +3,7 @@
 
 int run_shell(char **envp){
 
-    token_chain_t *tk_chain;
-    lex_exit_status_e lex_res;
+    lexer_res_t lex_res;
     parse_res_t parse_res;
 
     // Init signal handlers
@@ -17,7 +16,7 @@ int run_shell(char **envp){
     env_t env = NULL;
     int init_res = env_array_to_chain(envp, &env);
     if(init_res != 0){
-        print_error("system error while initializing environment\n");
+        //print_error("system error while initializing environment\n");
         free_env(env);
         return init_res;
     }
@@ -25,13 +24,13 @@ int run_shell(char **envp){
     while(1){
 
         if(sigsetjmp(jump_buffer, 1) != 0){
-            if(tk_chain) free_token_chain(tk_chain);
+            if(lex_res.tk_chain) free_token_chain(lex_res.tk_chain);
             if(parse_res.ast) free_ast(parse_res.ast);
             rl_free_line_state();
             rl_cleanup_after_signal();
         }
 
-        tk_chain = NULL;
+        lex_res.tk_chain = NULL;
         parse_res.ast = NULL;
         jump_active = 1;
 
@@ -42,34 +41,42 @@ int run_shell(char **envp){
         if(!line) continue;
         if(*line) add_history(line);
 
+
         // ----- LEXING ----------------------------------------------------- 
-        tk_chain = init_token_chain();
-        lex_res = build_token_list(line, strlen(line), tk_chain);
+
+        lex_res = lex_input(line, strlen(line));
 
         // Handle lexing error
-        if(lex_res != LEX_OK){
-            free_token_chain(tk_chain);
-            const char *err_reason = lex_exit_status_to_str(lex_res);
-            print_error("%s\n", err_reason);
+        if(!lex_res.success){
+            print_error("LEXING ERROR", lex_res.error);
+
+            env_export(&env, "ERRLOG", lex_res.error_info);
             
-            if(lex_res == LEX_FATAL) exit(1);
+            free_token_chain(lex_res.tk_chain);
+            free(lex_res.error);
+            free(lex_res.error_info);
             continue;
         }
 
         // Debug 
-        print_token_chain(tk_chain);
+        print_token_chain(lex_res.tk_chain);
         print_debug("Done lexing\n");
 
 
         // ----- PARSING -----------------------------------------------------
 
-        parse_res = build_ast(tk_chain);
+        parse_res = build_ast(lex_res.tk_chain);
 
         // Handle parsing error 
         if(!parse_res.success){
-            free_token_chain(tk_chain);
+            print_error("PARSING ERROR", parse_res.error);
+
+            env_export(&env, "ERRLOG", parse_res.error_info);
+
+            free_token_chain(lex_res.tk_chain);
             free_ast(parse_res.ast);
-            print_error("%s\n", parse_res.error);
+            free(parse_res.error);
+            free(parse_res.error_info);
             continue;
         }
 
@@ -89,7 +96,7 @@ int run_shell(char **envp){
         print_info("exec res : %d\n", res);
 
         // ----- FREE ALLOCATED DATA ------------------------------------------
-        free_token_chain(tk_chain);
+        free_token_chain(lex_res.tk_chain);
         free_ast(parse_res.ast);
     }
 

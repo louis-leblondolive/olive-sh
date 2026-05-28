@@ -1,9 +1,14 @@
 #ifndef LEXER_INTERNAL
 #define LEXER_INTERNAL
 
+#include <stdarg.h>
 #include "lexer.h"
 #include "lexer_rules.h"
 #include "token_chain.h"
+
+void set_lex_res_error(lexer_res_t *lex_res, char *fmt, ...);
+void set_lex_res_error_info(lexer_res_t *lex_res, char *fmt, ...);
+void preset_lex_res(lexer_res_t *lex_res, lex_exit_status_e lex_status);
 
 /**
  * @brief Handles the dollar lexing case.
@@ -17,7 +22,7 @@
  * 
  * @return LEX_OK if lexing was successful, corresponding error status otherwise.
  */
-lex_exit_status_e handle_dollar(token_node_t *cur_node, char cur_char, 
+lex_exit_status_e handle_dollar(lexer_res_t *lex_res, token_node_t *cur_node, char cur_char, 
     size_t *cursor, size_t *pos, lexer_state_e *cur_state, bool in_dq);
 
 
@@ -34,7 +39,7 @@ lex_exit_status_e handle_dollar(token_node_t *cur_node, char cur_char,
  * 
  * @return LEX_OK if lexing was successful, corresponding error status otherwise.
  */
-lex_exit_status_e handle_braces(token_node_t *cur_node, char cur_char, char *raw_input,
+lex_exit_status_e handle_braces(lexer_res_t *lex_res, token_node_t *cur_node, char cur_char, char *raw_input,
     size_t *cursor, size_t *pos, lexer_state_e *cur_state, bool in_dq);
 
 
@@ -47,7 +52,7 @@ lex_exit_status_e handle_braces(token_node_t *cur_node, char cur_char, char *raw
  * 
  * @return LEX_OK if flushing was successful, corresponding error status otherwise.
  */
-lex_exit_status_e flush_current_token(token_chain_t *tk_chain, lexer_state_e cur_state, size_t *pos);
+lex_exit_status_e flush_current_token(lexer_res_t *lex_res, lexer_state_e cur_state, size_t *pos);
 
 
 #endif

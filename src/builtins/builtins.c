@@ -8,5 +8,6 @@ builtin_t builtins[] = {
     {"env", builtin_env},
     {"pwd", builtin_pwd},
     {"exit", builtin_exit},
+    {"errlog", builtin_errlog},
     {NULL, NULL}
 } ;

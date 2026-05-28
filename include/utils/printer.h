@@ -16,14 +16,18 @@
 #include "ast.h"
 
 
-// Prints an error in red 
-void print_error(char *format, ...);
-
 // Prints an info and adds the "[INFO]" beacon
 void print_info(char *format, ...);
 
 // Prints an info and adds the "[DEBUG]" beacon
 void print_debug(char *format, ...);
+
+// Prints a hint and adds the "Hint:" beacon
+void print_hint(char *format, ...);
+
+// Prints an error to the format : title - description and 
+//  adds a "See more details" prompt.
+void print_error(char *title, char *description);
 
 // Prints a token chained list
 void print_token_chain(token_chain_t *tk_chain);

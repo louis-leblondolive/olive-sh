@@ -37,6 +37,15 @@ typedef enum lex_exit_status {
 } lex_exit_status_e;
 
 
+typedef struct lexer_res_s {
+    bool            success; 
+    token_chain_t   *tk_chain;
+    char            *error;
+    char            *error_info;
+    size_t          error_pos;
+} lexer_res_t ; 
+
+
 /**
  * @brief Internal states of the lexer's finite state machine.
  */
@@ -58,24 +67,14 @@ typedef enum lexer_state {
 } lexer_state_e;
 
 /**
- * @brief Tokenizes a raw input string into a linked token chain.
+ * @brief Tokenizes a raw input string into a lexer response struct.
  *
  * @param raw_input   The input string to lex.
  * @param input_len   Length of `raw_input`.
- * @param tk_chain    Output token chain to populate.
- * @return LEX_OK if lexing was successful, corresponding error status otherwise.
- * 
- * @warning Token chain lifecycle is user's responsibility, it will not be freed in this function and 
- * must be initialized before call. 
+ * @return A lexer response containing the token chain. If an error occured, success is set to false and
+ * error fields contains the details.
  */
-lex_exit_status_e build_token_list(char *raw_input, size_t input_len, token_chain_t *tk_chain);
+lexer_res_t lex_input(char *raw_input, size_t input_len);
 
-/**
- * @brief Returns a human-readable string for a given lexer exit status.
- *
- * @param ex_st   The exit status to describe.
- * @return A static string describing the status.
- */
-const char *lex_exit_status_to_str(lex_exit_status_e ex_st);
 
 #endif
