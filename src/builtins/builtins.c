@@ -9,5 +9,6 @@ builtin_t builtins[] = {
     {"pwd", builtin_pwd},
     {"exit", builtin_exit},
     {"errlog", builtin_errlog},
+    {"olvsh", builtin_olvsh},
     {NULL, NULL}
 } ;

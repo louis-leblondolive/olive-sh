@@ -27,7 +27,7 @@ void print_hint(char *format, ...);
 
 // Prints an error to the format : title - description and 
 //  adds a "See more details" prompt.
-void print_error(char *title, char *description);
+void print_error(char *title, char *description, char *errlog);
 
 // Prints a token chained list
 void print_token_chain(token_chain_t *tk_chain);

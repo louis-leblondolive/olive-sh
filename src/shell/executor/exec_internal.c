@@ -65,14 +65,18 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
     if(strchr(cmd_name, '/') != NULL){
         cmd_path = realpath(cmd_name, NULL);
         if(!cmd_path){
-            print_error("file or directory not found: %s", cmd_name);
+            char buff[strlen(cmd_name) + 29];
+            snprintf(buff, strlen(cmd_name) + 30, "file or directory not found: %s", cmd_name);
+            env_export(env, "ERRLOG", buff);
             return 1;
         }
     }
     else{
         cmd_path = find_cmd_path(env, cmd_name);
         if(!cmd_path){
-            print_error("command not found: '%s'\n", cmd_name);
+            char buff[strlen(cmd_name) + 19];
+            snprintf(buff, strlen(cmd_name) + 20, "command not found: %s", cmd_name);
+            env_export(env, "ERRLOG", buff);
             return 1;
         }
     }

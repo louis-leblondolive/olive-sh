@@ -48,7 +48,7 @@ int run_shell(char **envp){
 
         // Handle lexing error
         if(!lex_res.success){
-            print_error("LEXING ERROR", lex_res.error);
+            print_error("LEXING ERROR", lex_res.error, lex_res.error_info);
 
             env_export(&env, "ERRLOG", lex_res.error_info);
             
@@ -69,7 +69,7 @@ int run_shell(char **envp){
 
         // Handle parsing error 
         if(!parse_res.success){
-            print_error("PARSING ERROR", parse_res.error);
+            print_error("PARSING ERROR", parse_res.error, parse_res.error_info);
 
             env_export(&env, "ERRLOG", parse_res.error_info);
 
@@ -89,11 +89,19 @@ int run_shell(char **envp){
 
         int res = run_ast(&env, parse_res.ast);
 
-        char buf[32];
-        snprintf(buf, sizeof(buf), "%d", res);
-        env_export(&env, "?", buf);
+        char res_str[32];
+        snprintf(res_str, sizeof(res_str), "%d", res);
+        env_export(&env, "?", res_str);
 
-        print_info("exec res : %d\n", res);
+        if(res != 0){
+            char buf_err[32 + 26];
+            snprintf(buf_err, sizeof(buf_err), "process exited with code %d", res);
+
+            char *err_info = NULL;
+            err_info = expand_var(&env, "ERRLOG");
+            print_error("EXECUTION ERROR", buf_err, err_info);
+        }
+        
 
         // ----- FREE ALLOCATED DATA ------------------------------------------
         free_token_chain(lex_res.tk_chain);

@@ -18,8 +18,8 @@ int builtin_errlog(int argc, char **argv, env_t *env){
         printf("Last error details :\n %s\n", log);
     }
     
+    print_hint("Details can be shown automatically. Do to so, run olvsh --errlog\n");
     printf("\n");
-    print_hint("Details can be shown automatically. Do to so, run olsh --errlog\n");
-
+    
     return 0;
 }

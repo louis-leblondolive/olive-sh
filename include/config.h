@@ -10,8 +10,9 @@
 typedef struct config_infos_s {
 
     // verbosity parameters
-    bool quiet;
-    bool verbose;
+    bool debug;
+    bool hints;
+    bool errlog;
 
 } config_infos_t;
 
