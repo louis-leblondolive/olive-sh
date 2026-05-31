@@ -7,6 +7,7 @@ builtin_t builtins[] = {
     {"unset", builtin_unset},
     {"env", builtin_env},
     {"pwd", builtin_pwd},
+    {"cd", builtin_cd},
     {"exit", builtin_exit},
     {"errlog", builtin_errlog},
     {"olvsh", builtin_olvsh},

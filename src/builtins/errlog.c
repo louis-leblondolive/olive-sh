@@ -19,7 +19,6 @@ int builtin_errlog(int argc, char **argv, env_t *env){
     }
     
     print_hint("Details can be shown automatically. Do to so, run olvsh --errlog\n");
-    printf("\n");
     
     return 0;
 }
