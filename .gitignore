@@ -1,6 +1,7 @@
 .vscode
 obj/
 bin/
+tmp/
 .DS_Store
 
 # Prerequisites
