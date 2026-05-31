@@ -4,7 +4,9 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
+#include "token_chain.h"
 #include "ast.h"
 #include "builtins.h"
 #include "env.h"

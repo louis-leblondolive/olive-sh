@@ -39,6 +39,7 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
     int argc = count_args(cmd_node->argv);
     print_debug("argc setup\n");
 
+        // Arguments
     char **argv = arg_chain_to_array(env, cmd_node->argv);
     if(!argv){
         env_export(env, "ERRLOG", "couldn't resolve argument chain");
@@ -49,14 +50,54 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
     char *cmd_name = argv[0];
     print_debug("name setup\n");
 
-    // Setup redirs here
+        // Redirs
+    int fd_in = STDIN_FILENO;
+    int fd_out = STDOUT_FILENO;
+    
+    for(redir_t *red = cmd_node->redirs->first; red != NULL; red = red->next){
+
+        char *red_target = expand_segment_chain(env, red->target);
+        if(!red_target){
+            env_export(env, "ERRLOG", "failed to resolve redirection target");
+            return 1;
+        }
+
+        if(red->type == TOKEN_REDIR_IN) fd_in = open(red_target, O_RDONLY, 0644);
+        else if(red->type == TOKEN_REDIR_OUT) fd_out = open(red_target, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        else if(red->type == TOKEN_APPEND) fd_out = open(red_target, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    }
 
 
     // ------ RUN BUILTINS -----------------------------------------
     for (size_t i = 0; builtins[i].name != NULL; i++){
         if(strcmp(cmd_name, builtins[i].name) == 0){
+
+            // Set redirs up
+            int save_in = -1;
+            int save_out = -1;
+            if(fd_in != STDIN_FILENO){
+                save_in = dup(STDIN_FILENO);
+                dup2(fd_in, STDIN_FILENO);
+                close(fd_in);
+            }
+            if(fd_out != STDOUT_FILENO){
+                save_out = dup(STDOUT_FILENO);
+                dup2(fd_out, STDOUT_FILENO);
+                close(fd_out);
+            }
+
+            // Run 
             int res = builtins[i].func(argc, argv, env);
+
+            // Clean 
             free_arg_array(argv);
+            if(save_in != -1){
+                dup2(save_in, STDIN_FILENO); close(save_in);
+            }
+            if(save_out != -1){
+                 dup2(save_out, STDOUT_FILENO); close(save_out);
+            } 
+
             return res;
         } 
     }
@@ -124,6 +165,15 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
             if(reset_sa_handlers() != 0){
                 perror("sigaction");
                 exit(1);
+            }
+
+            if(fd_in != STDIN_FILENO){
+                dup2(fd_in, STDIN_FILENO);
+                close(fd_in);
+            }
+            if(fd_out != STDOUT_FILENO){
+                dup2(fd_out, STDOUT_FILENO);
+                close(fd_out);
             }
 
             execve(cmd_path, argv, envp);
