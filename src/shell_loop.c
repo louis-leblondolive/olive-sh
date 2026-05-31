@@ -21,8 +21,10 @@ int run_shell(char **envp){
         return init_res;
     }
     init_res = env_export(&env, "ERRLOG", "");
+    init_res += env_export(&env, "ERRTIME", "");
+    init_res += env_export(&env, "ERRCMD", "");
     if(init_res != 0){
-        print_error("SYSTEM ERROR", "failed to initialize environment", "ERRLOG initial export failed");
+        print_error("SYSTEM ERROR", "failed to initialize environment", "initial error variables export failed");
         free_env(env);
         return init_res;
     }
@@ -57,6 +59,7 @@ int run_shell(char **envp){
         if(!lex_res.success){
             print_error("LEXING ERROR", lex_res.error, lex_res.error_info);
 
+            env_export(&env, "ERRCMD", line);
             env_export(&env, "ERRLOG", lex_res.error_info);
             
             free_token_chain(lex_res.tk_chain);
@@ -78,6 +81,7 @@ int run_shell(char **envp){
         if(!parse_res.success){
             print_error("PARSING ERROR", parse_res.error, parse_res.error_info);
 
+            env_export(&env, "ERRCMD", line);
             env_export(&env, "ERRLOG", parse_res.error_info);
 
             free_token_chain(lex_res.tk_chain);
@@ -94,7 +98,7 @@ int run_shell(char **envp){
 
         // ----- EXECUTION ----------------------------------------------------
 
-        char *cache_errlog = expand_var(&env, "ERRLOG");
+        char *cache_err_time = expand_var(&env, "ERRTIME");
 
         int res = run_ast(&env, parse_res.ast);
 
@@ -102,30 +106,35 @@ int run_shell(char **envp){
         snprintf(res_str, sizeof(res_str), "%d", res);
         env_export(&env, "?", res_str);
 
-        if(res != 0){
+        if(res != 0){ // an error occured
+
             char err_descr[32 + 26];
             snprintf(err_descr, sizeof(err_descr), "process exited with code %d", res);
-
-            char *err_info = NULL;
-            err_info = expand_var(&env, "ERRLOG");
-            print_debug("errlog = %s\n", err_info);
-
-            if(strncmp(cache_errlog, err_info, MAX_ERROR_LEN) == 0){ 
+            
+            char *err_time = expand_var(&env, "ERRTIME");
+            if(strncmp(cache_err_time, err_time, MAX_ERROR_LEN) == 0){ 
                 // ERRLOG not affected by error 
                 print_debug("Errlog not modified by last error\n");
                 env_export(&env, "ERRLOG", ""); // no details attached to this error
                 print_error("EXECUTION ERROR", err_descr, NULL);
 
-            } else print_error("EXECUTION ERROR", err_descr, err_info);
+            } else {
+                // ERRLOG set to error description 
+                char *errlog = expand_var(&env, "ERRLOG");
+                print_error("EXECUTION ERROR", err_descr, errlog);
+                free(errlog);
+            }
+
+            env_export(&env, "ERRCMD", line);
             
-            free(err_info);
+            free(err_time);
         }
 
 
         // ----- FREE ALLOCATED DATA ------------------------------------------
         free_token_chain(lex_res.tk_chain);
         free_ast(parse_res.ast);
-        free(cache_errlog);
+        free(cache_err_time);
     }
 
     return 0;

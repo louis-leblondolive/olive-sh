@@ -14,7 +14,7 @@ void free_env(env_t env){
 
 
 int env_export(env_t *env, char *var_name, char *var_value){
-   if(!var_name) return -1;
+   if(!var_name) return 1;
 
    env_t cur_var = *env;
    env_t prev_var = NULL;
@@ -27,9 +27,17 @@ int env_export(env_t *env, char *var_name, char *var_value){
             free(cur_var->value);
             if(var_value){
                 cur_var->value = strdup(var_value);
-                if(!cur_var->value) return -1;
+                if(!cur_var->value) return 1;
             } else cur_var->value = NULL;
 
+            if(strcmp(var_name, "ERRLOG") == 0){
+                time_t t = time(NULL);
+                struct tm *tm = localtime(&t);
+                char err_time[64];
+                strftime(err_time, sizeof(err_time), "%Y-%m-%d %H:%M:%S", tm);
+                env_export(env, "ERRTIME", err_time);
+            }
+            
             return 0;
         }
         
@@ -39,7 +47,7 @@ int env_export(env_t *env, char *var_name, char *var_value){
    
    // Variable not found, adding variable to env
    env_t new_var = init_env_var(var_name, var_value);
-   if(!new_var) return -1;
+   if(!new_var) return 1;
 
    if(prev_var) prev_var->next = new_var;
    else{

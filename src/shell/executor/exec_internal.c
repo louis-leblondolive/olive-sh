@@ -50,6 +50,10 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
     char *cmd_name = argv[0];
     print_debug("name setup\n");
 
+    char **envp = env_chain_to_array(env);
+    if(!envp) { free_arg_array(argv); return 1; }
+
+
         // Redirs
     int fd_in = STDIN_FILENO;
     int fd_out = STDOUT_FILENO;
@@ -59,6 +63,7 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
         char *red_target = expand_segment_chain(env, red->target);
         if(!red_target){
             env_export(env, "ERRLOG", "failed to resolve redirection target");
+            free_arg_array(argv);
             return 1;
         }
 
@@ -91,6 +96,7 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
 
             // Clean 
             free_arg_array(argv);
+            free_env_array(envp);
             if(save_in != -1){
                 dup2(save_in, STDIN_FILENO); close(save_in);
             }
@@ -106,7 +112,6 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
     // ----- RUN EXTERNALS ------------------------------------------
     char *cmd_path = NULL; 
 
-    
     if(strchr(cmd_name, '/') != NULL){      // Run from given path 
 
         // Resolving path
@@ -115,6 +120,9 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
             char buff[strlen(cmd_name) + 29];
             snprintf(buff, strlen(cmd_name) + 30, "file or directory not found: %s", cmd_name);
             env_export(env, "ERRLOG", buff);
+
+            free_arg_array(argv);
+            free_env_array(envp);
             return 1;
         }
 
@@ -122,33 +130,50 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
         struct stat buf;
         if(stat(cmd_path, &buf) != 0){
             env_export(env, "ERRLOG", "couldn't read file stats");
+
+            free_arg_array(argv);
+            free_env_array(envp);
             return 1;
         }
         if(!S_ISREG(buf.st_mode)){
             env_export(env, "ERRLOG", "not a regular file");
+
+            free_arg_array(argv);
+            free_env_array(envp);
             return 1;
         }
         if(access(cmd_path, X_OK) != 0){
             env_export(env, "ERRLOG", "permission denied");
+
+            free_arg_array(argv);
+            free_env_array(envp);
             return 1;
         }
     }
     else{    // Run a command 
-
         cmd_path = find_cmd_path(env, cmd_name);
         if(!cmd_path){
             char buff[strlen(cmd_name) + 19];
             snprintf(buff, strlen(cmd_name) + 20, "command not found: %s", cmd_name);
             env_export(env, "ERRLOG", buff);
-            print_debug("Command not found\n");
+
+            free_arg_array(argv);
+            free_env_array(envp);
             return 1;
         }
     }
 
     print_debug("Found command %s at %s\n", cmd_name, cmd_path);
 
-    char **envp = env_chain_to_array(env);
-    if(!envp) return 1;
+    
+        // set error pipe up 
+    int pipe_err[2];
+    if(pipe(pipe_err) < 0){
+        env_export(env, "ERRLOG", "internal error setting up stderr pipe");
+        free_arg_array(argv);
+        free_env_array(envp);
+        return 1;
+    }
 
     pid_t pid = fork();
     int res;
@@ -167,6 +192,7 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
                 exit(1);
             }
 
+            // Redirs
             if(fd_in != STDIN_FILENO){
                 dup2(fd_in, STDIN_FILENO);
                 close(fd_in);
@@ -175,22 +201,37 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
                 dup2(fd_out, STDOUT_FILENO);
                 close(fd_out);
             }
+            close(pipe_err[0]);
+            dup2(pipe_err[1], STDERR_FILENO);
+            close(pipe_err[1]);
+
 
             execve(cmd_path, argv, envp);
-            
+
             perror("execve");
             exit(1);
 
         // Parent process
         default:
+            close(pipe_err[1]);
             waitpid(pid, &res, 0);
+
+            char err_buff[MAX_ERROR_LEN];
+            ssize_t n = read(pipe_err[0], err_buff, sizeof(err_buff) - 1);
+            close(pipe_err[0]);
+            if(n < 0) n = 0;
+            err_buff[n] = '\0';
+            
+            int real_res;
+            if(WIFSIGNALED(res))
+                real_res =  128 + WTERMSIG(res);
+            else real_res = WEXITSTATUS(res);
+
+            if(real_res != 0) env_export(env, "ERRLOG", err_buff);
 
             free(cmd_path);
             free(envp);
-
-            if(WIFSIGNALED(res))
-                return 128 + WTERMSIG(res);
-            return WEXITSTATUS(res);
+            return real_res;
     }
 
     return 0; /* unreachable */

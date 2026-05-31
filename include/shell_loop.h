@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <time.h>
 
 #include "env.h"
 #include "token_chain.h"

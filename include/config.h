@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #define MAX_WORD_LENGTH 2048
-#define MAX_ERROR_LEN 2048
+#define MAX_ERROR_LEN 4096
 
 
 typedef struct config_infos_s {
