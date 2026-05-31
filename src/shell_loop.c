@@ -16,10 +16,17 @@ int run_shell(char **envp){
     env_t env = NULL;
     int init_res = env_array_to_chain(envp, &env);
     if(init_res != 0){
-        //print_error("system error while initializing environment\n");
+        print_error("SYSTEM ERROR", "failed to initialize environment", "environment initialization failed");
         free_env(env);
         return init_res;
     }
+    init_res = env_export(&env, "ERRLOG", "");
+    if(init_res != 0){
+        print_error("SYSTEM ERROR", "failed to initialize environment", "ERRLOG initial export failed");
+        free_env(env);
+        return init_res;
+    }
+
 
     while(1){
 
@@ -87,6 +94,8 @@ int run_shell(char **envp){
 
         // ----- EXECUTION ----------------------------------------------------
 
+        char *cache_errlog = expand_var(&env, "ERRLOG");
+
         int res = run_ast(&env, parse_res.ast);
 
         char res_str[32];
@@ -94,18 +103,29 @@ int run_shell(char **envp){
         env_export(&env, "?", res_str);
 
         if(res != 0){
-            char buf_err[32 + 26];
-            snprintf(buf_err, sizeof(buf_err), "process exited with code %d", res);
+            char err_descr[32 + 26];
+            snprintf(err_descr, sizeof(err_descr), "process exited with code %d", res);
 
             char *err_info = NULL;
             err_info = expand_var(&env, "ERRLOG");
-            print_error("EXECUTION ERROR", buf_err, err_info);
+            print_debug("errlog = %s\n", err_info);
+
+            if(strncmp(cache_errlog, err_info, MAX_ERROR_LEN) == 0){ 
+                // ERRLOG not affected by error 
+                print_debug("Errlog not modified by last error\n");
+                env_export(&env, "ERRLOG", ""); // no details attached to this error
+                print_error("EXECUTION ERROR", err_descr, NULL);
+
+            } else print_error("EXECUTION ERROR", err_descr, err_info);
+            
+            free(err_info);
         }
-        
+
 
         // ----- FREE ALLOCATED DATA ------------------------------------------
         free_token_chain(lex_res.tk_chain);
         free_ast(parse_res.ast);
+        free(cache_errlog);
     }
 
     return 0;

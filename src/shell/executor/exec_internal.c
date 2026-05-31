@@ -40,7 +40,10 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
     print_debug("argc setup\n");
 
     char **argv = arg_chain_to_array(env, cmd_node->argv);
-    if(!argv) return 1;
+    if(!argv){
+        env_export(env, "ERRLOG", "couldn't resolve argument chain");
+        return 1;
+    }
     print_debug("argv setup\n");
 
     char *cmd_name = argv[0];
@@ -77,11 +80,12 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
             char buff[strlen(cmd_name) + 19];
             snprintf(buff, strlen(cmd_name) + 20, "command not found: %s", cmd_name);
             env_export(env, "ERRLOG", buff);
+            print_debug("Command not found\n");
             return 1;
         }
     }
     
-    print_debug("found command %s at %s\n", cmd_name, cmd_path);
+    print_debug("Found command %s at %s\n", cmd_name, cmd_path);
 
     char **envp = env_chain_to_array(env);
     if(!envp) return 1;

@@ -14,7 +14,7 @@ void free_env(env_t env){
 
 
 int env_export(env_t *env, char *var_name, char *var_value){
-   if(!var_name || !var_value) return -1;
+   if(!var_name) return -1;
 
    env_t cur_var = *env;
    env_t prev_var = NULL;
@@ -25,8 +25,10 @@ int env_export(env_t *env, char *var_name, char *var_value){
         if(strcmp(cur_var->name, var_name) == 0){    
             
             free(cur_var->value);
-            cur_var->value = strdup(var_value);
-            if(!cur_var->value) return -1;
+            if(var_value){
+                cur_var->value = strdup(var_value);
+                if(!cur_var->value) return -1;
+            } else cur_var->value = NULL;
 
             return 0;
         }
