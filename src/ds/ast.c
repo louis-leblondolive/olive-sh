@@ -217,3 +217,39 @@ int add_child_right(ast_node_t *parent, ast_node_t *child){
 
     return 0;
 }
+
+
+size_t count_leaves(ast_node_t *root){
+    if(!root) return -1;
+
+    if(root->token == TOKEN_WORD) return 1;
+    else return count_leaves(root->left) + count_leaves(root->right);
+}
+
+
+void fill_leaves_table_aux(ast_node_t **tab, ast_node_t *node, size_t *i){
+    
+    if(!node) return;
+
+    if(node->token == TOKEN_WORD){  // command node
+        tab[*i] = node;
+        *i = *i + 1;
+        return;
+    }
+    else{
+        fill_leaves_table_aux(tab, node->left, i);
+        fill_leaves_table_aux(tab, node->right, i);
+    }
+}
+
+
+ast_node_t **leaves_table(ast_node_t *root, size_t leave_count){
+    if(!root) return NULL;
+
+    ast_node_t **res_tab = (ast_node_t**)malloc(sizeof(ast_node_t*) * leave_count);
+
+    size_t i = 0;
+    fill_leaves_table_aux(res_tab, root, &i);
+
+    return res_tab;
+}

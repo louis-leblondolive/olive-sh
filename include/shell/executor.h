@@ -1,6 +1,9 @@
 #ifndef EXECUTOR
 #define EXECUTOR
 
+#include <stdlib.h>
+#include <unistd.h>
+
 #include "token_chain.h"
 #include "env.h"
 #include "ast.h"

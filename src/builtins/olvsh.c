@@ -23,6 +23,7 @@ int builtin_olvsh(int argc, char **argv, env_t *env){
             if(strncmp(opt, "hints", 5) == 0) cfg_infos.hints = enable_mode;
             else if(strncmp(opt, "debug", 5) == 0) cfg_infos.debug = enable_mode;
             else if(strncmp(opt, "errlog", 6) == 0) cfg_infos.errlog = enable_mode;
+            else if(strncmp(opt, "pipefail", 8) == 0) cfg_infos.pipefail = enable_mode;
 
             else {
                 char buf[strlen(opt) + 20];

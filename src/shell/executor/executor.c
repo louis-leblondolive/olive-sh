@@ -12,9 +12,7 @@ int run_ast(env_t *env, ast_node_t *ast){
             return run_cmd(env, ast);
 
         case TOKEN_PIPE:
-            // pipe here 
-            run_ast(env, ast->left);
-            return run_ast(env, ast->right);
+            return run_pipe(env, ast);
 
         case TOKEN_AND:
             cache_res = run_ast(env, ast->left);

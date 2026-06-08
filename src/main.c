@@ -13,7 +13,10 @@ int main(int argc, char *argv[], char *envp[]){
     // verbosity parameters 
     cfg_infos.debug = false;
     cfg_infos.hints = true;
+    
+    // error behaviour 
     cfg_infos.errlog = false;
+    cfg_infos.pipefail = false;
 
     int run_res = run_shell(envp);
 

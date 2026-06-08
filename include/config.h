@@ -12,7 +12,10 @@ typedef struct config_infos_s {
     // verbosity parameters
     bool debug;
     bool hints;
+   
+    // error behaviour 
     bool errlog;
+    bool pipefail;
 
 } config_infos_t;
 

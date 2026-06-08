@@ -29,6 +29,113 @@ char *find_cmd_path(env_t *env, char *cmd){
 }
 
 
+pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int fd_err){
+
+    print_debug("Running command asynchronously\n");
+
+    pid_t pid = fork();
+
+    switch (pid){
+
+        case -1:
+            perror("fork");
+            return -1;
+        
+        // Child process
+        case 0:     
+            if(reset_sa_handlers() != 0){
+                perror("sigaction");
+                exit(1);
+            }
+
+            // --- SETUP REDIRS AND I/O ----------------------------------------------
+            for(redir_t *red = cmd_node->redirs->first; red != NULL; red = red->next){
+
+                char *red_target = expand_segment_chain(env, red->target);
+                if(!red_target){
+                    dprintf(fd_err, "olive-sh: failed to resolve redirection target\n");
+                    exit(1);
+                }
+
+                if(red->type == TOKEN_REDIR_IN) 
+                    fd_in = open(red_target, O_RDONLY, 0644);
+                else if(red->type == TOKEN_REDIR_OUT) 
+                    fd_out = open(red_target, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                else if(red->type == TOKEN_APPEND) 
+                    fd_out = open(red_target, O_WRONLY | O_CREAT | O_APPEND, 0644);
+            }
+
+            if(fd_in != STDIN_FILENO){
+                dup2(fd_in, STDIN_FILENO);
+                close(fd_in);
+            }
+            if(fd_out != STDOUT_FILENO){
+                dup2(fd_out, STDOUT_FILENO);
+                close(fd_out);
+            } 
+
+            // --- SETUP PARAMETERS --------------------------------------------------
+            char **argv = arg_chain_to_array(env, cmd_node->argv);
+            if(!argv){
+                dprintf(fd_err, "olive-sh: couldn't resolve argument chain\n");
+                exit(1);
+            }
+
+            char *cmd_name = argv[0];
+            
+            char **envp = env_chain_to_array(env);
+            if(!envp) exit(1);
+
+
+            // --- FIND COMMAND PATH --------------------------------------------------
+            char *cmd_path = NULL;
+
+            if(strchr(cmd_name, '/') != NULL){      // Run from given path 
+
+                // Resolving path
+                cmd_path = realpath(cmd_name, NULL);
+                if(!cmd_path){
+                    dprintf(fd_err, "olive-sh: %s: no such file or directory\n", cmd_name);
+                    exit(127);
+                }
+
+                // Permission test 
+                struct stat buf;
+                if(stat(cmd_path, &buf) != 0){
+                    dprintf(fd_err, "olive-sh: %s: no such file or directory\n", cmd_name);
+                    exit(127);
+                }
+                if(!S_ISREG(buf.st_mode)){
+                    dprintf(fd_err, "olive-sh: %s is a directory\n", cmd_name);
+                    exit(126);
+                }
+                if(access(cmd_path, X_OK) != 0){
+                    dprintf(fd_err, "olive-sh: %s: permission denied\n", cmd_name);
+                    exit(126);
+                }
+            }
+            else{    // Run a command 
+                cmd_path = find_cmd_path(env, cmd_name);
+                if(!cmd_path){
+                    dprintf(fd_err, "olive-sh: %s: command not found\n", cmd_name);
+                    exit(127);
+                }
+            }
+
+            print_debug("Found command %s at %s\n", cmd_name, cmd_path);
+
+            execve(cmd_path, argv, envp);
+
+            dprintf(fd_err, "olive-sh: %s: %s\n", cmd_name, strerror(errno));
+            if(errno == ENOENT) exit(127);
+            else exit(126);
+
+        // Parent process
+        default:    
+            return pid;
+    }
+}
+
 
 int run_cmd(env_t *env, ast_node_t *cmd_node){
     if(!env || !cmd_node) return 0;
@@ -108,131 +215,151 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
         } 
     }
     
+    free_arg_array(argv);
+    free_env_array(envp);
 
     // ----- RUN EXTERNALS ------------------------------------------
-    char *cmd_path = NULL; 
 
-    if(strchr(cmd_name, '/') != NULL){      // Run from given path 
-
-        // Resolving path
-        cmd_path = realpath(cmd_name, NULL);
-        if(!cmd_path){
-            char buff[strlen(cmd_name) + 29];
-            snprintf(buff, strlen(cmd_name) + 30, "file or directory not found: %s", cmd_name);
-            env_export(env, "ERRLOG", buff);
-
-            free_arg_array(argv);
-            free_env_array(envp);
-            return 1;
-        }
-
-        // Permission test 
-        struct stat buf;
-        if(stat(cmd_path, &buf) != 0){
-            env_export(env, "ERRLOG", "couldn't read file stats");
-
-            free_arg_array(argv);
-            free_env_array(envp);
-            return 1;
-        }
-        if(!S_ISREG(buf.st_mode)){
-            env_export(env, "ERRLOG", "not a regular file");
-
-            free_arg_array(argv);
-            free_env_array(envp);
-            return 1;
-        }
-        if(access(cmd_path, X_OK) != 0){
-            env_export(env, "ERRLOG", "permission denied");
-
-            free_arg_array(argv);
-            free_env_array(envp);
-            return 1;
-        }
-    }
-    else{    // Run a command 
-        cmd_path = find_cmd_path(env, cmd_name);
-        if(!cmd_path){
-            char buff[strlen(cmd_name) + 19];
-            snprintf(buff, strlen(cmd_name) + 20, "command not found: %s", cmd_name);
-            env_export(env, "ERRLOG", buff);
-
-            free_arg_array(argv);
-            free_env_array(envp);
-            return 1;
-        }
-    }
-
-    print_debug("Found command %s at %s\n", cmd_name, cmd_path);
-
-    
         // set error pipe up 
     int pipe_err[2];
     if(pipe(pipe_err) < 0){
         env_export(env, "ERRLOG", "internal error setting up stderr pipe");
-        free_arg_array(argv);
-        free_env_array(envp);
         return 1;
     }
 
-    pid_t pid = fork();
+    pid_t cmd_pid = run_cmd_async(env, cmd_node, fd_in, fd_out, pipe_err[1]);
+    close(pipe_err[1]);
+
     int res;
-    switch (pid){
+    waitpid(cmd_pid, &res, 0);
 
-        case -1:
-            perror("fork");
-            free(cmd_path);
-            free_env_array(envp);
-            return 1;
-        
-        // Child process
-        case 0:     
-            if(reset_sa_handlers() != 0){
-                perror("sigaction");
-                exit(1);
-            }
-
-            // Redirs
-            if(fd_in != STDIN_FILENO){
-                dup2(fd_in, STDIN_FILENO);
-                close(fd_in);
-            }
-            if(fd_out != STDOUT_FILENO){
-                dup2(fd_out, STDOUT_FILENO);
-                close(fd_out);
-            }
-            close(pipe_err[0]);
-            dup2(pipe_err[1], STDERR_FILENO);
-            close(pipe_err[1]);
-
-
-            execve(cmd_path, argv, envp);
-
-            perror("execve");
-            exit(1);
-
-        // Parent process
-        default:
-            close(pipe_err[1]);
-            waitpid(pid, &res, 0);
-
-            char err_buff[MAX_ERROR_LEN];
-            ssize_t n = read(pipe_err[0], err_buff, sizeof(err_buff) - 1);
-            close(pipe_err[0]);
-            if(n < 0) n = 0;
-            err_buff[n] = '\0';
+    char err_buff[MAX_ERROR_LEN];
+    ssize_t n = read(pipe_err[0], err_buff, sizeof(err_buff) - 1);
+    close(pipe_err[0]);
+    if(n < 0) n = 0;
+    err_buff[n] = '\0';
             
-            int real_res;
-            if(WIFSIGNALED(res))
-                real_res =  128 + WTERMSIG(res);
-            else real_res = WEXITSTATUS(res);
+    int real_res;
+    if(WIFSIGNALED(res))
+        real_res =  128 + WTERMSIG(res);
+    else real_res = WEXITSTATUS(res);
 
-            if(real_res != 0) env_export(env, "ERRLOG", err_buff);
+    if(real_res != 0) env_export(env, "ERRLOG", err_buff);
 
-            free(cmd_path);
-            free(envp);
-            return real_res;
+    return real_res;
+}
+
+
+int run_pipe(env_t *env, ast_node_t *pipe_node){
+
+    print_debug("Handling pipe\n");
+
+    size_t cmd_count = count_leaves(pipe_node);  // count >= 2, checked during parsing
+    ast_node_t **cmd_tab = leaves_table(pipe_node, cmd_count);
+    int (*std_pipe_tab)[2] = (int (*)[2])malloc(sizeof(int (*)[2]) * (cmd_count - 1));
+    int (*err_pipe_tab)[2] = (int (*)[2])malloc(sizeof(int (*)[2]) * cmd_count);
+
+    // --- Initialize pipes --- 
+    for (size_t i = 0; i < cmd_count - 1; i++){
+        if (pipe(std_pipe_tab[i]) != 0){
+            perror("pipe");
+            exit(1);
+        }
+        fcntl(std_pipe_tab[i][0], F_SETFD, FD_CLOEXEC);
+        fcntl(std_pipe_tab[i][1], F_SETFD, FD_CLOEXEC);
+    }
+    for (size_t i = 0; i < cmd_count; i++){
+        if (pipe(err_pipe_tab[i]) != 0){
+            perror("pipe");
+            exit(1);
+        }
+        fcntl(err_pipe_tab[i][0], F_SETFD, FD_CLOEXEC);
+        fcntl(err_pipe_tab[i][1], F_SETFD, FD_CLOEXEC);
+    }
+    
+
+    // --- Run commands asynchronously --- 
+    pid_t *pid_tab = (pid_t*)malloc(sizeof(pid_t) * cmd_count);
+    for (size_t i = 0; i < cmd_count; i++){
+
+        int fd_in = (i == 0) ? STDIN_FILENO : std_pipe_tab[i-1][0];
+        int fd_out = (i == cmd_count - 1) ? STDOUT_FILENO : std_pipe_tab[i][1];
+
+        pid_tab[i] = run_cmd_async(env, cmd_tab[i], fd_in, fd_out, err_pipe_tab[i][1]);
+
+        // fork failure
+        if(pid_tab[i] < 0){ 
+            env_export(env, "ERRLOG", "fork failure");
+            for (size_t j = 0; j < i; j++){
+                kill(pid_tab[j], SIGKILL);
+                waitpid(pid_tab[j], NULL, 0);
+            }
+            for(size_t i = 0; i < cmd_count - 1; i++){ 
+                close(std_pipe_tab[i][0]);  close(std_pipe_tab[i][1]); 
+                close(err_pipe_tab[i][0]);  close(err_pipe_tab[i][1]);
+            }
+
+            free(pid_tab);
+            free(std_pipe_tab);
+            free(err_pipe_tab);
+
+            return 1;
+        }
+    }
+    
+    print_debug("All process started\n");
+
+    for(size_t i = 0; i < cmd_count - 1; i++){
+        close(std_pipe_tab[i][0]);
+        close(std_pipe_tab[i][1]);
+        close(err_pipe_tab[i][1]);
+    }   
+    close(err_pipe_tab[cmd_count - 1][1]);
+
+    // --- Handle commands return ---
+    int real_res;
+    size_t i = 0;
+    while(i < cmd_count){
+
+        int res;
+        print_debug("Waiting for process %d to exit...", pid_tab[i]);
+        waitpid(pid_tab[i], &res, 0);
+
+        if(WIFSIGNALED(res))
+            real_res =  128 + WTERMSIG(res);
+        else real_res = WEXITSTATUS(res);
+
+        if(real_res != 0){
+            if(cfg_infos.pipefail) break;
+            else if(i == cmd_count - 1) break;
+        }
+
+        close(err_pipe_tab[i][0]);
+        i ++;
+    }
+    
+        // Error during pipe execution 
+    if(real_res != 0){
+        char err_buff[MAX_ERROR_LEN];
+        size_t n = read(err_pipe_tab[i][0], err_buff, sizeof(err_buff) - 1);
+        close(err_pipe_tab[i][0]);
+
+        if(n < 0) err_buff[0] = '\0';
+        err_buff[n] = '\0';
+        
+        env_export(env, "ERRLOG", err_buff);
+        
+        for(size_t j = i + 1; j < cmd_count; j++){
+            close(err_pipe_tab[j][0]);
+            kill(pid_tab[j], SIGKILL);
+        }
     }
 
-    return 0; /* unreachable */
+    print_debug("Done handling pipe\n");
+
+    free(pid_tab);
+    free(std_pipe_tab);
+    free(err_pipe_tab);
+
+    return real_res;
 }

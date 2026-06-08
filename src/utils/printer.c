@@ -50,7 +50,7 @@ void print_error(char *error_title, char *error_description, char *errlog){
     fprintf(stderr, RESET);
     fprintf(stderr, " - %s\n", error_description);
     if(!cfg_infos.errlog) printf("Run errlog for more details.\n");
-    else if(errlog) printf("%s\n", errlog);
+    else if(errlog) fprintf(stderr, "%s\n", errlog);
 }
 
 
