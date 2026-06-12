@@ -142,6 +142,11 @@ pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int
 
             print_debug("Found command %s at %s\n", cmd_name, cmd_path);
 
+            if(fd_err != STDERR_FILENO){
+                dup2(fd_err, STDERR_FILENO);
+                close(fd_err);
+            }
+            
             execve(cmd_path, argv, envp);
 
             dprintf(fd_err, "olive-sh: %s: %s\n", cmd_name, strerror(errno));
