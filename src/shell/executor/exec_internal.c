@@ -57,12 +57,30 @@ pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int
                     exit(1);
                 }
 
-                if(red->type == TOKEN_REDIR_IN) 
+                if(red->type == TOKEN_REDIR_IN){
+                    if(fd_in != STDOUT_FILENO) close(fd_in);
                     fd_in = open(red_target, O_RDONLY, 0644);
-                else if(red->type == TOKEN_REDIR_OUT) 
+                    if(fd_in < 0){
+                        dprintf(fd_err, "olive-sh: < %s: failed to open redirection target", red_target);
+                        exit(1);
+                    }
+                }
+                else if(red->type == TOKEN_REDIR_OUT){
+                    if(fd_out != STDIN_FILENO) close(fd_in);
                     fd_out = open(red_target, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                else if(red->type == TOKEN_APPEND) 
+                    if(fd_out < 0){
+                        dprintf(fd_err, "olive-sh: > %s: failed to open redirection target", red_target);
+                        exit(1);
+                    }
+                }
+                else if(red->type == TOKEN_APPEND){
+                    if(fd_out != STDOUT_FILENO) close(fd_in);
                     fd_out = open(red_target, O_WRONLY | O_CREAT | O_APPEND, 0644);
+                    if(fd_out < 0){
+                        dprintf(fd_err, "olive-sh: >> %s: failed to open redirection target", red_target);
+                        exit(1);
+                    }
+                }
             }
 
             if(fd_in != STDIN_FILENO){
@@ -149,7 +167,7 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
         // Arguments
     char **argv = arg_chain_to_array(env, cmd_node->argv);
     if(!argv){
-        env_export(env, "ERRLOG", "couldn't resolve argument chain");
+        env_export(env, "ERRLOG", "olive-sh: couldn't resolve argument chain");
         return 1;
     }
     print_debug("argv setup\n");
