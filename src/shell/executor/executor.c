@@ -28,7 +28,7 @@ int run_ast(env_t *env, ast_node_t *ast){
             run_ast(env, ast->left);
             return run_ast(env, ast->right);
         
-        default:
+        default:        // unreachable
             return 1;
     }
 

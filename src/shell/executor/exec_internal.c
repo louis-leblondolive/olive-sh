@@ -91,11 +91,15 @@ pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int
                 dup2(fd_out, STDOUT_FILENO);
                 close(fd_out);
             } 
+            if(fd_err != STDERR_FILENO){
+                dup2(fd_err, STDERR_FILENO);
+                close(fd_err);
+            }
 
             // --- SETUP PARAMETERS --------------------------------------------------
             char **argv = arg_chain_to_array(env, cmd_node->argv);
             if(!argv){
-                dprintf(fd_err, "olive-sh: couldn't resolve argument chain\n");
+                dprintf(STDERR_FILENO, "olive-sh: couldn't resolve argument chain\n");
                 exit(1);
             }
 
@@ -113,43 +117,38 @@ pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int
                 // Resolving path
                 cmd_path = realpath(cmd_name, NULL);
                 if(!cmd_path){
-                    dprintf(fd_err, "olive-sh: %s: no such file or directory\n", cmd_name);
+                    dprintf(STDERR_FILENO, "olive-sh: %s: no such file or directory\n", cmd_name);
                     exit(127);
                 }
 
                 // Permission test 
                 struct stat buf;
                 if(stat(cmd_path, &buf) != 0){
-                    dprintf(fd_err, "olive-sh: %s: no such file or directory\n", cmd_name);
+                    dprintf(STDERR_FILENO, "olive-sh: %s: no such file or directory\n", cmd_name);
                     exit(127);
                 }
                 if(!S_ISREG(buf.st_mode)){
-                    dprintf(fd_err, "olive-sh: %s is a directory\n", cmd_name);
+                    dprintf(STDERR_FILENO, "olive-sh: %s is a directory\n", cmd_name);
                     exit(126);
                 }
                 if(access(cmd_path, X_OK) != 0){
-                    dprintf(fd_err, "olive-sh: %s: permission denied\n", cmd_name);
+                    dprintf(STDERR_FILENO, "olive-sh: %s: permission denied\n", cmd_name);
                     exit(126);
                 }
             }
             else{    // Run a command 
                 cmd_path = find_cmd_path(env, cmd_name);
                 if(!cmd_path){
-                    dprintf(fd_err, "olive-sh: %s: command not found\n", cmd_name);
+                    dprintf(STDERR_FILENO, "olive-sh: %s: command not found\n", cmd_name);
                     exit(127);
                 }
             }
 
             print_debug("Found command %s at %s\n", cmd_name, cmd_path);
-
-            if(fd_err != STDERR_FILENO){
-                dup2(fd_err, STDERR_FILENO);
-                close(fd_err);
-            }
             
             execve(cmd_path, argv, envp);
 
-            dprintf(fd_err, "olive-sh: %s: %s\n", cmd_name, strerror(errno));
+            dprintf(STDERR_FILENO, "olive-sh: %s: %s\n", cmd_name, strerror(errno));
             if(errno == ENOENT) exit(127);
             else exit(126);
 
