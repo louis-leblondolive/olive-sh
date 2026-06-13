@@ -26,6 +26,7 @@ int builtin_olvsh(int argc, char **argv, env_t *env){
             else if(strncmp(opt, "pipefail", MAX_WORD_LENGTH) == 0) cfg_infos.pipefail = enable_mode;
             else if(strncmp(opt, "errexit", MAX_WORD_LENGTH) == 0) cfg_infos.errexit = enable_mode;
             else if(strncmp(opt, "nounset", MAX_WORD_LENGTH) == 0) cfg_infos.nounset = enable_mode;
+            else if(strncmp(opt, "xtrace", MAX_WORD_LENGTH) == 0) cfg_infos.xtrace = enable_mode;
 
             else {
                 env_export(env, "ERRLOG", "olive-sh: no such option : --%s", opt);

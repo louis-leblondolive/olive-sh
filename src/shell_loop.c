@@ -24,6 +24,7 @@ int run_shell(char **envp){
     init_res += env_export(&env, "ERRTIME", "");
     init_res += env_export(&env, "ERRCMD", "");
     init_res += env_export(&env, "?", "0");
+    init_res += env_export(&env, "PS4", "+");
     if(init_res != 0){
         print_error("SYSTEM ERROR", "failed to initialize environment", "initial variables export failed");
         free_env(env);

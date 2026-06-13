@@ -114,7 +114,6 @@ pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int
                 exit(1);
             }
 
-
             // --- FIND COMMAND PATH --------------------------------------------------
             char *cmd_path = NULL;
 
@@ -186,6 +185,13 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
     char *cmd_name = argv[0];
     print_debug("name setup\n");
 
+    if(cfg_infos.xtrace){
+        char *ps4 = expand_var(env, "PS4");
+        fprintf(stderr, "%s ", ps4);
+        for (int i = 0; i < argc; i++) fprintf(stderr, "%s ", argv[i]);
+        printf("\n");
+        free(ps4);
+    }
             
     // ------ RUN BUILTINS -----------------------------------------
     for (size_t i = 0; builtins[i].name != NULL; i++){
