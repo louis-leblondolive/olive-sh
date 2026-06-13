@@ -10,6 +10,9 @@ parse_res_t build_ast(token_chain_t *tk_chain){
     parse_res.error = NULL;
     parse_res.error_info = NULL;
 
+    set_parse_res_error(&parse_res, "");    // safety
+    set_parse_res_error_info(&parse_res, "");
+
     if(!tk_chain) return parse_res; // Empty input
 
     ast_node_t *cur_ast = build_seq_node(NULL, tk_chain, &parse_res);

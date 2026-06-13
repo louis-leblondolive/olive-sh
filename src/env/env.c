@@ -112,7 +112,10 @@ char *expand_var(env_t *env, char *var){
     }
 
     // Variable not set 
-    if(cfg_infos.nounset) return NULL;
+    if(cfg_infos.nounset){
+        env_export(env, "ERRLOG", "unbound variable : \"%s\"", var);
+        return NULL;
+    }
     
     char *res = strdup(""); 
     return res;
