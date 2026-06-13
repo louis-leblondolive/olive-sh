@@ -20,14 +20,15 @@ int builtin_olvsh(int argc, char **argv, env_t *env){
                 opt = argv[i] + 5;
             } else opt = argv[i] + 2;
 
-            if(strncmp(opt, "hints", 5) == 0) cfg_infos.hints = enable_mode;
-            else if(strncmp(opt, "debug", 5) == 0) cfg_infos.debug = enable_mode;
-            else if(strncmp(opt, "errlog", 6) == 0) cfg_infos.errlog = enable_mode;
-            else if(strncmp(opt, "pipefail", 8) == 0) cfg_infos.pipefail = enable_mode;
+            if(strncmp(opt, "hints", MAX_WORD_LENGTH) == 0) cfg_infos.hints = enable_mode;
+            else if(strncmp(opt, "debug", MAX_WORD_LENGTH) == 0) cfg_infos.debug = enable_mode;
+            else if(strncmp(opt, "errlog", MAX_WORD_LENGTH) == 0) cfg_infos.errlog = enable_mode;
+            else if(strncmp(opt, "pipefail", MAX_WORD_LENGTH) == 0) cfg_infos.pipefail = enable_mode;
+            else if(strncmp(opt, "errexit", MAX_WORD_LENGTH) == 0) cfg_infos.errexit = enable_mode;
 
             else {
                 char buf[strlen(opt) + 20];
-                snprintf(buf, strlen(opt) + 20, "No such option : --%s", opt);
+                snprintf(buf, strlen(opt) + 20, "olive-sh: no such option : --%s", opt);
                 env_export(env, "ERRLOG", buf);
                 return 1;
             }

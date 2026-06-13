@@ -62,7 +62,8 @@ int run_shell(char **envp){
 
             env_export(&env, "ERRCMD", line);
             env_export(&env, "ERRLOG", lex_res.error_info);
-            
+            env_export(&env, "?", "2");
+
             free_token_chain(lex_res.tk_chain);
             free(lex_res.error);
             free(lex_res.error_info);
@@ -84,6 +85,7 @@ int run_shell(char **envp){
 
             env_export(&env, "ERRCMD", line);
             env_export(&env, "ERRLOG", parse_res.error_info);
+            env_export(&env, "?", "2");
 
             free_token_chain(lex_res.tk_chain);
             free_ast(parse_res.ast);
@@ -109,6 +111,9 @@ int run_shell(char **envp){
 
         if(res != 0){ // an error occured
 
+            if(cfg_infos.errexit) exit(res);
+
+            // signal error 
             char err_descr[32 + 26];
             snprintf(err_descr, sizeof(err_descr), "process exited with code %d", res);
             
