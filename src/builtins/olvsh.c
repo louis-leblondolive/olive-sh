@@ -25,11 +25,10 @@ int builtin_olvsh(int argc, char **argv, env_t *env){
             else if(strncmp(opt, "errlog", MAX_WORD_LENGTH) == 0) cfg_infos.errlog = enable_mode;
             else if(strncmp(opt, "pipefail", MAX_WORD_LENGTH) == 0) cfg_infos.pipefail = enable_mode;
             else if(strncmp(opt, "errexit", MAX_WORD_LENGTH) == 0) cfg_infos.errexit = enable_mode;
+            else if(strncmp(opt, "nounset", MAX_WORD_LENGTH) == 0) cfg_infos.nounset = enable_mode;
 
             else {
-                char buf[strlen(opt) + 20];
-                snprintf(buf, strlen(opt) + 20, "olive-sh: no such option : --%s", opt);
-                env_export(env, "ERRLOG", buf);
+                env_export(env, "ERRLOG", "olive-sh: no such option : --%s", opt);
                 return 1;
             }
         }

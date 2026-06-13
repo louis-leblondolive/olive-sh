@@ -170,10 +170,7 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
 
         // Arguments
     char **argv = arg_chain_to_array(env, cmd_node->argv);
-    if(!argv){
-        env_export(env, "ERRLOG", "olive-sh: couldn't resolve argument chain");
-        return 1;
-    }
+    if(!argv) return 1;
     print_debug("argv setup\n");
 
     char *cmd_name = argv[0];
@@ -181,7 +178,7 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
 
     char **envp = env_chain_to_array(env);
     if(!envp) { free_arg_array(argv); return 1; }
-
+    print_debug("envp setup\n");
 
         // Redirs
     int fd_in = STDIN_FILENO;
@@ -266,7 +263,7 @@ int run_cmd(env_t *env, ast_node_t *cmd_node){
         real_res =  128 + WTERMSIG(res);
     else real_res = WEXITSTATUS(res);
 
-    if(real_res != 0) env_export(env, "ERRLOG", err_buff);
+    if(real_res != 0) env_export(env, "ERRLOG", "%s", err_buff);
 
     return real_res;
 }
@@ -369,7 +366,7 @@ int run_pipe(env_t *env, ast_node_t *pipe_node){
         if(n < 0) err_buff[0] = '\0';
         err_buff[n] = '\0';
         
-        env_export(env, "ERRLOG", err_buff);
+        env_export(env, "ERRLOG", "%s", err_buff);
         
         for(size_t j = i + 1; j < cmd_count; j++){
             close(err_pipe_tab[j][0]);

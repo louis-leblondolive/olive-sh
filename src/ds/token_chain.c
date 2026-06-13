@@ -100,7 +100,10 @@ char *expand_segment_chain(env_t *env, segment_t *chain){
 
         if(cur_seg->type == SEG_VAR){
             char *var_val = expand_var(env, cur_seg->value);
-            if(!var_val) return NULL;
+            if(!var_val){
+                
+                return NULL;
+            }
             strlcpy(cur_seg->value, var_val, MAX_WORD_LENGTH);
             free(var_val);
             cur_seg->type = SEG_LITERAL;

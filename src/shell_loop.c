@@ -53,6 +53,7 @@ int run_shell(char **envp){
 
 
         // ----- LEXING ----------------------------------------------------- 
+        lex_res.error_pos = 0;
 
         lex_res = lex_input(line, strlen(line));
 
@@ -60,8 +61,8 @@ int run_shell(char **envp){
         if(!lex_res.success){
             print_error("LEXING ERROR", lex_res.error, lex_res.error_info);
 
-            env_export(&env, "ERRCMD", line);
-            env_export(&env, "ERRLOG", lex_res.error_info);
+            env_export(&env, "ERRCMD", "%s", line);
+            env_export(&env, "ERRLOG", "%s", lex_res.error_info);
             env_export(&env, "?", "2");
 
             free_token_chain(lex_res.tk_chain);
@@ -83,8 +84,8 @@ int run_shell(char **envp){
         if(!parse_res.success){
             print_error("PARSING ERROR", parse_res.error, parse_res.error_info);
 
-            env_export(&env, "ERRCMD", line);
-            env_export(&env, "ERRLOG", parse_res.error_info);
+            env_export(&env, "ERRCMD", "%s", line);
+            env_export(&env, "ERRLOG", "%s", parse_res.error_info);
             env_export(&env, "?", "2");
 
             free_token_chain(lex_res.tk_chain);
@@ -105,9 +106,7 @@ int run_shell(char **envp){
 
         int res = run_ast(&env, parse_res.ast);
 
-        char res_str[32];
-        snprintf(res_str, sizeof(res_str), "%d", res);
-        env_export(&env, "?", res_str);
+        env_export(&env, "?", "%d", res);
 
         if(res != 0){ // an error occured
 
@@ -131,12 +130,12 @@ int run_shell(char **envp){
                 free(errlog);
             }
 
-            env_export(&env, "ERRCMD", line);
+            env_export(&env, "ERRCMD", "%s", line);
             
             free(err_time);
         }
 
-
+        
         // ----- FREE ALLOCATED DATA ------------------------------------------
         free_token_chain(lex_res.tk_chain);
         free_ast(parse_res.ast);

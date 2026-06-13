@@ -297,6 +297,11 @@ lexer_res_t lex_input(char *raw_input, size_t input_len){
     if(exit_st != LEX_OK) lex_res.success = false;
 
     // Assign error descriptions 
+
+    // safety
+    set_lex_res_error(&lex_res, "");
+    set_lex_res_error_info(&lex_res, "");
+
     switch (exit_st){
         
         case LEX_UNKNOWN_ERROR:

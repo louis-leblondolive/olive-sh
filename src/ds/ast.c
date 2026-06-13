@@ -144,8 +144,7 @@ char **arg_chain_to_array(env_t *env, argv_t *argv){
     for (int i = 0; i < argc; i++){
 
         res[i] = expand_segment_chain(env, cur_arg->seg_chain);
-        if(!res[i]) res[i] = strdup("");
-
+        if(!res[i]) return NULL;
         cur_arg = cur_arg->next;
     }
     

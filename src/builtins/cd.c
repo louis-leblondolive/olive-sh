@@ -16,14 +16,10 @@ int builtin_cd(int argc, char **argv, env_t *env){
         if(errno == EACCES) env_export(env, "ERRLOG", "cd: access denied");
         else if(errno == ELOOP) env_export(env, "ERRLOG", "cd: looping symbolic link");
         else if(errno == ENOENT){
-            char err_buf[33 + strlen(path)];
-            snprintf(err_buf, sizeof(err_buf), "cd: no such file or directory \"%s\"", path);
-            env_export(env, "ERRLOG", err_buf);
+            env_export(env, "ERRLOG", "cd: no such file or directory \"%s\"", path);
         }
         else if(errno == ENOTDIR){
-            char err_buff[23 + strlen(path)];
-            snprintf(err_buff, sizeof(err_buff), "cd: not a directory \"%s\"", path);
-            env_export(env, "ERRLOG", err_buff);
+            env_export(env, "ERRLOG", "cd: not a directory \"%s\"", path);
         }
         else env_export(env, "ERRLOG", "cd: internal error");
 

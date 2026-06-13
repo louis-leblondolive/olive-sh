@@ -17,7 +17,8 @@ typedef struct config_infos_s {
     // error behaviour 
     bool pipefail;
     bool errexit;
-
+    bool nounset;
+    
 } config_infos_t;
 
 extern config_infos_t cfg_infos;
