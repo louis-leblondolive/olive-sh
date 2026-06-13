@@ -32,7 +32,7 @@ SRCS        = $(shell find $(SRC_DIR) -name "*.c")
 OBJS        = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
 # --- Binary Output ---
-MAIN_BIN    = $(BIN_DIR)/shell_main
+MAIN_BIN    = $(BIN_DIR)/olvsh
 
 # --- Primary Rules ---
 all: $(BIN_DIR) $(OBJ_DIR) $(MAIN_BIN)
