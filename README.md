@@ -209,6 +209,9 @@ flowchart LR
     WORD - segment chain :   (LITERAL)[ls]
     ```
 
+    >[!TIP]
+    >This output can be seen directly in the shell. To do so, enalble the `--debug` option.
+
     #### FSM implementation 
     A complete version of this flowchart is available in the lexer [documentation]().
 
@@ -225,16 +228,16 @@ flowchart LR
 
         START -->|"' '"| START
         START -->|"*"| WORD
-        START -->|&, |, <, >, ;| OPERATOR
+        START -->|"&, |, <, >, ;"| OPERATOR
 
-        WORD -->|" ' ' or &, |, <, >, ; "| --> START
+        WORD -->|" ' ' or &, |, <, >, ; "| START
         WORD -->|"*"| WORD
         WORD -->|"$"| IN_DOLLAR
         WORD -->|"'"| IN_SG_QUOTE
         WORD -->|"'#quot;'"| IN_DB_QUOTE
         
         IN_DOLLAR -->|"a-z ; A-Z"| IN_DOLLAR
-        IN_DOLLAR -->|"*"| -> WORD
+        IN_DOLLAR -->|"*"| WORD
 
         IN_SG_QUOTE -->|"'"| WORD
 
@@ -242,12 +245,10 @@ flowchart LR
         IN_DB_QUOTE -->|"'#quot;'"| WORD
 
         IN_DOLLAR_IN_DB_QUOTE -->|"a-z ; A-Z"| IN_DOLLAR_IN_DB_QUOTE
-        IN_DOLLAR_IN_DB_QUOTE -->|"*"| -> IN_DB_QUOTE
+        IN_DOLLAR_IN_DB_QUOTE -->|"*"|IN_DB_QUOTE
     ``` 
 
 
->[!TIP]
->This output can be seen directly in the shell. To do so, enalble the `--debug` option.
 
 
 - **Parser**
