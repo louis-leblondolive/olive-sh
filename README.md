@@ -213,39 +213,38 @@ flowchart LR
     >This output can be seen directly in the shell. To do so, enalble the `--debug` option.
 
     #### FSM implementation 
-    A complete version of this flowchart is available in the lexer [documentation]().
+    A simplified version of the FSM used to build the lexer is depicted below. A complete version of this flowchart and its transition matrix are available in the lexer [documentation]().
 
     ```mermaid
-    %%{init: {"flowchart": {"htmlLabels": true}} }%%
-    flowchart TD
-        START["`START <br> *inbetween words*`"]
-        WORD["WORD"]
-        OPERATOR["OPERATOR"]
-        IN_DOLLAR["IN_DOLLAR"]
-        IN_SG_QUOTE["IN_SG_QUOTE"]
-        IN_DB_QUOTE["IN_DB_QUOTE"]
-        IN_DOLLAR_IN_DB_QUOTE["IN_DOLLAR_IN_DB_QUOTE"]
+    stateDiagram-v2
 
-        START -->|"' '"| START
-        START -->|"*"| WORD
-        START -->|"&, |, <, >, ;"| OPERATOR
+    state "START<br><i>inbetween words</i>" as START
+    state "WORD<br>Loop: *" as WORD
+    state "IN_DOLLAR<br>Loop: a-z A-Z " as IN_DOLLAR
+    state "IN_SG_QUOTE" as IN_SG_QUOTE
+    state "IN_DB_QUOTE" as IN_DB_QUOTE
+    state "IN_DOLLAR_IN_DB_QUOTE<br>Loop: a-z A-Z " as IN_DOLLAR_IN_DB_QUOTE
 
-        WORD -->|" ' ' or &, |, <, >, ; "| START
-        WORD -->|"*"| WORD
-        WORD -->|"$"| IN_DOLLAR
-        WORD -->|"'"| IN_SG_QUOTE
-        WORD -->|"'#quot;'"| IN_DB_QUOTE
-        
-        IN_DOLLAR -->|"a-z ; A-Z"| IN_DOLLAR
-        IN_DOLLAR -->|"*"| WORD
+    [*] --> START
 
-        IN_SG_QUOTE -->|"'"| WORD
+    START --> WORD : *
+    START --> OPERATOR : &, |, &#59, <, >
 
-        IN_DB_QUOTE -->|"$"| IN_DOLLAR_IN_DB_QUOTE
-        IN_DB_QUOTE -->|"'#quot;'"| WORD
+    OPERATOR --> START : *
 
-        IN_DOLLAR_IN_DB_QUOTE -->|"a-z ; A-Z"| IN_DOLLAR_IN_DB_QUOTE
-        IN_DOLLAR_IN_DB_QUOTE -->|"*"|IN_DB_QUOTE
+    WORD --> START : Separators
+    WORD --> IN_DOLLAR : $
+    WORD --> IN_SG_QUOTE : '
+    WORD --> IN_DB_QUOTE : "
+
+    IN_DOLLAR --> WORD : *
+
+    IN_SG_QUOTE --> WORD : '
+
+    IN_DB_QUOTE --> IN_DOLLAR_IN_DB_QUOTE : $
+    IN_DB_QUOTE --> WORD : "
+
+    IN_DOLLAR_IN_DB_QUOTE --> IN_DB_QUOTE : *
     ``` 
 
 
