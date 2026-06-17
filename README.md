@@ -51,7 +51,7 @@ Exited with status 0
 ```
 
 ### Builtins 
-Usual builtins are directly implemented, including `echo`, `cd`, `pwd`, `export`, `unset` and `exit`.
+Usual builtins are directly implemented, including `echo`, `cd`, `pwd`, `env`, `export`, `unset` and `exit`.
 `$PATH` resolution provides access to any other available command. 
 
 ```bash 
@@ -169,6 +169,92 @@ Three custom options are also featured :
 
 ## Technical Deep Dive
 
+### Shell general architecture
+
+The interpreter pipeline is divided in three steps. The executor also interacts with the environment and the signal handler. 
+
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": true}} }%%
+flowchart LR
+    A["`**Input** <br> echo hello ${USER}world | cat && ls`"] -->|"`*Stream*`"| B
+    B["`**Lexer** <br> Segment aware FSM`"] -->|"`*Token chain*`"| C
+    C["`**Parser** <br> Recursive descent`"] -->|"`*AST*`"| exec
+
+    subgraph exec ["Executor"]
+        D["`**Builtin dispatch** <br> cd, export, exit...`"]
+        X["`**Command execution** <br> $PATH resolution`"]
+        P["`**Pipeline** <br> pipe - dup2 - fork`"]
+        D ~~~ X ~~~ P
+    end
+
+    E["`**Environment** <br> Linked list`"] <-->|"get/set var"| exec
+    S["`**Signal handler** <br> SIGINT - SIGCHLD`"] -->|"longjmp · reap"| exec
+```
+
+- **Lexer**
+
+    Instead of using fragile string splitting, `olive-sh` lexer uses a Finite State Machine (FSM) to ensure parsing robustness. 
+
+
+    #### Lexer output example 
+    ```bash
+    > echo "hello ${USER}" | cat && ls
+
+    [DEBUG] Lexed node chain :
+    WORD - segment chain :   (LITERAL)[echo]
+    WORD - segment chain :   (LITERAL)[hello ]  (VAR)[USER]
+    PIPE
+    WORD - segment chain :   (LITERAL)[cat]
+    AND
+    WORD - segment chain :   (LITERAL)[ls]
+    ```
+
+    #### FSM implementation 
+    A complete version of this flowchart is available in the lexer [documentation]().
+
+    ```mermaid
+    %%{init: {"flowchart": {"htmlLabels": true}} }%%
+    flowchart TD
+        START["`START <br> *inbetween words*`"]
+        WORD["WORD"]
+        OPERATOR["OPERATOR"]
+        IN_DOLLAR["IN_DOLLAR"]
+        IN_SG_QUOTE["IN_SG_QUOTE"]
+        IN_DB_QUOTE["IN_DB_QUOTE"]
+        IN_DOLLAR_IN_DB_QUOTE["IN_DOLLAR_IN_DB_QUOTE"]
+
+        START -->|"' '"| START
+        START -->|"*"| WORD
+        START -->|&, |, <, >, ;| OPERATOR
+
+        WORD -->|" ' ' or &, |, <, >, ; "| --> START
+        WORD -->|"*"| WORD
+        WORD -->|"$"| IN_DOLLAR
+        WORD -->|"'"| IN_SG_QUOTE
+        WORD -->|"'#quot;'"| IN_DB_QUOTE
+        
+        IN_DOLLAR -->|"a-z ; A-Z"| IN_DOLLAR
+        IN_DOLLAR -->|"*"| -> WORD
+
+        IN_SG_QUOTE -->|"'"| WORD
+
+        IN_DB_QUOTE -->|"$"| IN_DOLLAR_IN_DB_QUOTE
+        IN_DB_QUOTE -->|"'#quot;'"| WORD
+
+        IN_DOLLAR_IN_DB_QUOTE -->|"a-z ; A-Z"| IN_DOLLAR_IN_DB_QUOTE
+        IN_DOLLAR_IN_DB_QUOTE -->|"*"| -> IN_DB_QUOTE
+    ``` 
+
+
+>[!TIP]
+>This output can be seen directly in the shell. To do so, enalble the `--debug` option.
+
+
+- **Parser**
+
+- **Executor**
+
+
 
 ## Repository Structure 
 This repository has the following structure : 
@@ -244,4 +330,4 @@ This repository has the following structure :
 ## Tests  
 
 ## References
-- [Beej's Guide to Interprocess Communication]()
+- [Beej's Guide to Interprocess Communication](https://beej.us/guide/bgipc/)
