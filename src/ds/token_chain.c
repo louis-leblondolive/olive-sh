@@ -151,6 +151,7 @@ char *token_to_str(token_e token){
         case TOKEN_AND: return "'&&'";   
         case TOKEN_OR:  return "'||'";     
         case TOKEN_SEQ: return "';'";
+        case TOKEN_AMP: return "'&'";
         default: return "";
     }
 }

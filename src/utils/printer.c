@@ -76,7 +76,7 @@ void print_token_chain(token_chain_t *tk_chain){
             printf(BOLD_ORANGE);
             printf("WORD");
             printf(RESET);
-            printf(" - segment chain :\n");
+            printf(" - segment chain : ");
             print_segment_chain(node->first_seg);
             printf("\n");
             break;
@@ -129,6 +129,12 @@ void print_token_chain(token_chain_t *tk_chain){
             printf(RESET);
             break;
         
+        case TOKEN_AMP:
+            printf(BOLD_ORANGE);
+            printf("AMP\n");
+            printf(RESET);
+            break;
+
         default:
             break;
         }

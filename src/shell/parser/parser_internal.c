@@ -78,8 +78,9 @@ ast_node_t *build_cmd_node(token_chain_t *tk_chain, parse_res_t *parse_res){
 
     // Add arguments and redirections
     while (tk_chain->first != NULL
-        && tk_chain->first->token != TOKEN_SEQ && tk_chain->first->token != TOKEN_OR 
-        && tk_chain->first->token != TOKEN_AND && tk_chain->first->token != TOKEN_PIPE){
+        && tk_chain->first->token != TOKEN_SEQ && tk_chain->first->token != TOKEN_AMP
+        && tk_chain->first->token != TOKEN_OR && tk_chain->first->token != TOKEN_AND 
+        && tk_chain->first->token != TOKEN_PIPE){
         
         cur_node = tk_chain->first;
 
@@ -340,7 +341,7 @@ ast_node_t *build_or_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_re
 }
 
 
-ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res){
+ast_node_t *build_delim_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res){
     if(!parse_res) return NULL;
     if(!tk_chain){    // should never be reached
         parse_res->success = false;
@@ -349,9 +350,12 @@ ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
         return NULL;
     }
 
-    if(tk_chain->first != NULL && tk_chain->first->token == TOKEN_SEQ){
+    if(tk_chain->first != NULL 
+        && (tk_chain->first->token == TOKEN_SEQ || tk_chain->first->token == TOKEN_AMP)){
 
-        print_debug("Building seq node\n");
+        print_debug("Building delim node\n");
+
+        token_e delim_tk = tk_chain->first->token;
 
         token_node_t *cur_node = token_chain_pop(tk_chain); 
         free_node_segment_chain(cur_node);                    // move forward in chain
@@ -379,9 +383,9 @@ ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
             return NULL;
         }
 
-        res->token = TOKEN_SEQ;
+        res->token = delim_tk;
 
-        return build_seq_node(res, tk_chain, parse_res);
+        return build_delim_node(res, tk_chain, parse_res);
     }
 
     else {
@@ -389,7 +393,7 @@ ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_r
 
         ast_node_t *res = build_or_node(cur_ast, tk_chain, parse_res);
         if(!res) return NULL;
-        return build_seq_node(res, tk_chain, parse_res);
+        return build_delim_node(res, tk_chain, parse_res);
     }
 
     return NULL; /* unreachable */

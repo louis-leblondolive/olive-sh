@@ -15,6 +15,6 @@ ast_node_t *build_cmd_node(token_chain_t *tk_chain, parse_res_t *parse_res);
 ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res);
 ast_node_t *build_and_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res);
 ast_node_t *build_or_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res);
-ast_node_t *build_seq_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res);
+ast_node_t *build_delim_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res);
 
 #endif

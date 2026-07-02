@@ -51,7 +51,8 @@ typedef enum token {
     TOKEN_APPEND,      /** '>>' */
     TOKEN_AND,         /** '&&' */
     TOKEN_OR,          /** '||' */
-    TOKEN_SEQ          /** ';' */
+    TOKEN_SEQ,         /** ';' */
+    TOKEN_AMP          /** '&' */
 } token_e ; 
 
 /**

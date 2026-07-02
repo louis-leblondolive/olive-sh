@@ -209,8 +209,8 @@ flowchart LR
     WORD - segment chain :   (LITERAL)[ls]
     ```
 
-    >[!TIP]
-    >This output can be seen directly in the shell. To do so, enalble the `--debug` option.
+>[!TIP]
+>This output can be seen directly in the shell. To do so, enalble the `--debug` option.
 
     #### FSM implementation 
     A simplified version of the FSM used to build the lexer is depicted below. A complete version of this flowchart and its transition matrix are available in the lexer [documentation]().

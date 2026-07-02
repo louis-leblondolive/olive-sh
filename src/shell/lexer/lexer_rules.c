@@ -16,6 +16,7 @@ token_e get_operator_token(char *op){
     if(strncmp(op, "&&", MAX_WORD_LENGTH) == 0) return TOKEN_AND;
     if(strncmp(op, "||", MAX_WORD_LENGTH) == 0) return TOKEN_OR;
     if(strncmp(op, ";", MAX_WORD_LENGTH) == 0) return TOKEN_SEQ;
+    if(strncmp(op, "&", MAX_WORD_LENGTH) == 0) return TOKEN_AMP;
     
     return TOKEN_WORD;
 }

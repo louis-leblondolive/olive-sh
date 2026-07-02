@@ -13,6 +13,7 @@ typedef struct config_infos_s {
     bool debug;
     bool hints;
     bool errlog;
+    bool xtrace;
    
     // error behaviour 
     bool pipefail;
