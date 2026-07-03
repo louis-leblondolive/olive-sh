@@ -1,35 +1,8 @@
 #include "exec_internal.h"
 
 
-char *find_cmd_path(env_t *env, char *cmd){
 
-    char *path = expand_var(env, "PATH");
-    if(!path) return NULL;
-
-    char *cmd_path = NULL;
-    char *path_dir;
-
-    for (path_dir = strtok(path, ":");  path_dir != NULL; path_dir = strtok(NULL, ":")){
-        
-        char full_path[strlen(path_dir) + 1 + strlen(cmd) + 1];
-        snprintf(full_path, sizeof(full_path), "%s/%s", path_dir, cmd);
-
-        print_debug("Searching for %s at %s\n", cmd, full_path);
-
-        if(access(full_path, F_OK | X_OK) == 0){
-
-            cmd_path = strdup(full_path);
-            break;
-        }
-    }
-
-    free(path);
-    
-    return cmd_path;
-}
-
-
-pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int fd_err){
+pid_t run_cmd_async(env_t *env, char **argv, char **envp, int fd_in, int fd_out, int fd_err){
 
     print_debug("Running command asynchronously\n");
 
@@ -49,41 +22,6 @@ pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int
             }
 
             // --- SETUP REDIRS AND I/O ----------------------------------------------
-            for(redir_t *red = cmd_node->redirs->first; red != NULL; red = red->next){
-
-                char *red_target = expand_segment_chain(env, red->target);
-                if(!red_target){
-                    char *unbound_info = expand_var(env, "ERRLOG");
-                    dprintf(fd_err, "olive-sh: failed to resolve redirection target (%s)\n", unbound_info);
-                    exit(1);
-                }
-
-                if(red->type == TOKEN_REDIR_IN){
-                    if(fd_in != STDOUT_FILENO) close(fd_in);
-                    fd_in = open(red_target, O_RDONLY, 0644);
-                    if(fd_in < 0){
-                        dprintf(fd_err, "olive-sh: < %s: failed to open redirection target", red_target);
-                        exit(1);
-                    }
-                }
-                else if(red->type == TOKEN_REDIR_OUT){
-                    if(fd_out != STDIN_FILENO) close(fd_in);
-                    fd_out = open(red_target, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                    if(fd_out < 0){
-                        dprintf(fd_err, "olive-sh: > %s: failed to open redirection target", red_target);
-                        exit(1);
-                    }
-                }
-                else if(red->type == TOKEN_APPEND){
-                    if(fd_out != STDOUT_FILENO) close(fd_in);
-                    fd_out = open(red_target, O_WRONLY | O_CREAT | O_APPEND, 0644);
-                    if(fd_out < 0){
-                        dprintf(fd_err, "olive-sh: >> %s: failed to open redirection target", red_target);
-                        exit(1);
-                    }
-                }
-            }
-
             if(fd_in != STDIN_FILENO){
                 dup2(fd_in, STDIN_FILENO);
                 close(fd_in);
@@ -97,24 +35,8 @@ pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int
                 close(fd_err);
             }
 
-            // --- SETUP PARAMETERS --------------------------------------------------
-            char **argv = arg_chain_to_array(env, cmd_node->argv);
-            if(!argv){
-                char *unbound_info = expand_var(env, "ERRLOG");
-                dprintf(STDERR_FILENO, "olive-sh: couldn't resolve argument chain (%s)\n", unbound_info);
-                exit(1);
-            }
-
-            char *cmd_name = argv[0];
-            
-            char **envp = env_chain_to_array(env);
-            if(!envp){
-                char *unbound_info = expand_var(env, "ERRLOG");
-                dprintf(STDERR_FILENO, "olive-sh: couldn't resolve environment (%s)\n", unbound_info);
-                exit(1);
-            }
-
             // --- FIND COMMAND PATH --------------------------------------------------
+            char *cmd_name = argv[0];
             char *cmd_path = NULL;
 
             if(strchr(cmd_name, '/') != NULL){      // Run from given path 
@@ -164,136 +86,39 @@ pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int
 }
 
 
-int run_cmd(env_t *env, ast_node_t *cmd_node){
-    if(!env || !cmd_node) return 0;
-
+int run_builtin(int id, int argc, char **argv, env_t *env, int fd_in, int fd_out){
+    
     print_debug("Running command\n");
     
-    int argc = count_args(cmd_node->argv);
-    print_debug("argc setup\n");
-
-    // ----- SET ARGUMENTS UP -----
-    char **argv = arg_chain_to_array(env, cmd_node->argv);
-    if(!argv){
-        char *unbound_info = expand_var(env, "ERRLOG");
-        env_export(env, "ERRLOG", "olive-sh: failed to resolve argument chain (%s)", unbound_info);
-        free(unbound_info);
-        return 1;
+    // Setup I/O
+    int save_in = -1;
+    int save_out = -1;
+    if(fd_in != STDIN_FILENO){
+        save_in = dup(STDIN_FILENO);
+        dup2(fd_in, STDIN_FILENO);
+        close(fd_in);
     }
-    print_debug("argv setup\n");
-
-    char *cmd_name = argv[0];
-    print_debug("name setup\n");
-
-    if(cfg_infos.xtrace){
-        char *ps4 = expand_var(env, "PS4");
-        fprintf(stderr, "%s ", ps4);
-        for (int i = 0; i < argc; i++) fprintf(stderr, "%s ", argv[i]);
-        printf("\n");
-        free(ps4);
-    }
-            
-    // ------ RUN BUILTINS -----------------------------------------
-    for (size_t i = 0; builtins[i].name != NULL; i++){
-        if(strcmp(cmd_name, builtins[i].name) == 0){
-
-            // --- ENVP --- 
-            char **envp = env_chain_to_array(env);
-            if(!envp) { 
-                char *unbound_info = expand_var(env, "ERRLOG");
-                env_export(env, "ERRLOG", "olive-sh: failed to resolve environment (%s)", unbound_info);
-                free(unbound_info);
-                free_arg_array(argv); 
-                return 1; 
-            }
-            print_debug("envp setup\n");
-
-            // --- REDIRS ---   
-            int fd_in = STDIN_FILENO;
-            int fd_out = STDOUT_FILENO;
-            
-            for(redir_t *red = cmd_node->redirs->first; red != NULL; red = red->next){
-
-                char *red_target = expand_segment_chain(env, red->target);
-                if(!red_target){
-                    char *unbound_info = expand_var(env, "ERRLOG");
-                    env_export(env, "ERRLOG", "olive-sh: failed to resolve redirection target (%s)", unbound_info);
-                    free(unbound_info);
-                    free_arg_array(argv);
-                    return 1;
-                }
-
-                if(red->type == TOKEN_REDIR_IN) fd_in = open(red_target, O_RDONLY, 0644);
-                else if(red->type == TOKEN_REDIR_OUT) fd_out = open(red_target, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                else if(red->type == TOKEN_APPEND) fd_out = open(red_target, O_WRONLY | O_CREAT | O_APPEND, 0644);
-            }
-
-            int save_in = -1;
-            int save_out = -1;
-            if(fd_in != STDIN_FILENO){
-                save_in = dup(STDIN_FILENO);
-                dup2(fd_in, STDIN_FILENO);
-                close(fd_in);
-            }
-            if(fd_out != STDOUT_FILENO){
-                save_out = dup(STDOUT_FILENO);
-                dup2(fd_out, STDOUT_FILENO);
-                close(fd_out);
-            }
-
-            // ---------- RUN ---------- 
-            int res = builtins[i].func(argc, argv, env);
-
-            // Clean 
-            free_arg_array(argv);
-            free_env_array(envp);
-            if(save_in != -1){
-                dup2(save_in, STDIN_FILENO); close(save_in);
-            }
-            if(save_out != -1){
-                 dup2(save_out, STDOUT_FILENO); close(save_out);
-            } 
-
-            return res;
-        } 
+    if(fd_out != STDOUT_FILENO){
+        save_out = dup(STDOUT_FILENO);
+        dup2(fd_out, STDOUT_FILENO);
+        close(fd_out);
     }
     
-    free_arg_array(argv);
-   
+    // Run 
+    int res = builtins[id].func(argc, argv, env);
 
-    // ----- RUN EXTERNALS ------------------------------------------
-
-        // set error pipe up 
-    int pipe_err[2];
-    if(pipe(pipe_err) < 0){
-        env_export(env, "ERRLOG", "internal error setting up stderr pipe");
-        return 1;
+    // Clean 
+    if(save_in != -1){
+        dup2(save_in, STDIN_FILENO); close(save_in);
     }
+    if(save_out != -1){
+        dup2(save_out, STDOUT_FILENO); close(save_out);
+    } 
 
-    pid_t cmd_pid = run_cmd_async(env, cmd_node, STDIN_FILENO, STDOUT_FILENO, pipe_err[1]);
-                // Redirections are reprocessed in run_cmd_async
-    close(pipe_err[1]);
-
-    int res;
-    waitpid(cmd_pid, &res, 0);
-
-    char err_buff[MAX_ERROR_LEN];
-    ssize_t n = read(pipe_err[0], err_buff, sizeof(err_buff) - 1);
-    close(pipe_err[0]);
-    if(n < 0) n = 0;
-    err_buff[n] = '\0';
-            
-    int real_res;
-    if(WIFSIGNALED(res))
-        real_res =  128 + WTERMSIG(res);
-    else real_res = WEXITSTATUS(res);
-
-    if(real_res != 0) env_export(env, "ERRLOG", "%s", err_buff);
-
-    return real_res;
+    return res;
 }
 
-
+/*
 int run_pipe(env_t *env, ast_node_t *pipe_node){
 
     print_debug("Handling pipe\n");
@@ -406,4 +231,4 @@ int run_pipe(env_t *env, ast_node_t *pipe_node){
     free(err_pipe_tab);
 
     return real_res;
-}
+} */

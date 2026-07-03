@@ -12,9 +12,10 @@
 #include "env.h"
 #include "signals.h"
 #include "printer.h"
+#include "exec_rules.h"
 
-int run_cmd(env_t *env, ast_node_t *cmd_node);
-pid_t run_cmd_async(env_t *env, ast_node_t *cmd_node, int fd_in, int fd_out, int fd_err);
-int run_pipe(env_t *env, ast_node_t *pipe_node);
+int run_builtin(int id, int argc, char **argv, env_t *env, int fd_in, int fd_out);
+pid_t run_cmd_async(env_t *env, char **argv, char **envp, int fd_in, int fd_out, int fd_err);
+//int run_pipe(env_t *env, ast_node_t *pipe_node);
 
 #endif

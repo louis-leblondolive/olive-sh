@@ -105,7 +105,7 @@ int run_shell(char **envp){
 
         char *cache_err_time = expand_var(&env, "ERRTIME");
 
-        int res = run_ast(&env, parse_res.ast);
+        int res = run_ast(&env, parse_res.ast, STDIN_FILENO, STDOUT_FILENO);
 
         env_export(&env, "?", "%d", res);
 

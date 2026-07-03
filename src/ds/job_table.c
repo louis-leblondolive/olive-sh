@@ -102,7 +102,7 @@ int job_table_add(job_table_t *job_tbl, job_t *job){
 
 void job_table_rm(job_table_t *job_tbl, int job_id){
     if(!job_tbl || !job_tbl->tbl ||
-         job_id <= 0 || job_id >= job_tbl->capacity) return;
+         job_id <= 0 || job_id >= (int)job_tbl->capacity) return;
 
     free_job(job_tbl->tbl[job_id]);
     job_tbl->tbl[job_id] = NULL;
