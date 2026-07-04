@@ -44,6 +44,10 @@ void clean_exec_vars(char **argv, char **envp);
  */
 void clean_io_fds(int fd_in, int fd_out, int default_fd_in, int default_fd_out);
 
+/**
+ * @brief Closes both ends of a pipe.
+ */
+void close_pipe(int *pipe);
 
 int setup_redirs(env_t *env, ast_node_t *cmd_node, int *fd_in, int *fd_out);
 

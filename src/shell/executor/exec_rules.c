@@ -49,11 +49,19 @@ void clean_io_fds(int fd_in, int fd_out, int default_fd_in, int default_fd_out){
 }
 
 
+void close_pipe(int *pipe){
+    if(!pipe) return;
+    close(pipe[0]);
+    close(pipe[1]);
+}
+
+
 int clean_result(int raw_res){
     if(WIFSIGNALED(raw_res))
         return 128 + WTERMSIG(raw_res);
     else return WEXITSTATUS(raw_res);
 }
+
 
 
 int setup_redirs(env_t *env, ast_node_t *cmd_node, int *fd_in, int *fd_out){

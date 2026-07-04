@@ -103,44 +103,57 @@ int run_shell(char **envp){
 
         // ----- EXECUTION ----------------------------------------------------
 
-        char *cache_err_time = expand_var(&env, "ERRTIME");
+        //char *cache_err_time = expand_var(&env, "ERRTIME");
+        int res = -1;
 
-        int res = run_ast(&env, parse_res.ast, STDIN_FILENO, STDOUT_FILENO);
+        int err_pipe[2];
+        if(pipe(err_pipe) != 0){
+            perror("pipe");
+
+            free_token_chain(lex_res.tk_chain);
+            free_ast(parse_res.ast);
+
+            env_export(&env, "ERRCMD", "%s", line);
+            env_export(&env, "ERRLOG", "olive-sh: pipe initialization issue");
+            env_export(&env, "?", "2");
+
+            continue;
+        }
+
+        res = run_ast(&env, parse_res.ast, STDIN_FILENO, STDOUT_FILENO, err_pipe[1]);
+
+        close(err_pipe[1]);
 
         env_export(&env, "?", "%d", res);
 
-        if(res != 0){ // an error occured
-
+        if(res != 0){
+            
             if(cfg_infos.errexit) exit(res);
 
-            // signal error 
+            // error-causing command 
+            env_export(&env, "ERRCMD", "%s", line);
+
+            // error code 
             char err_descr[32 + 26];
             snprintf(err_descr, sizeof(err_descr), "process exited with code %d", res);
-            
-            char *err_time = expand_var(&env, "ERRTIME");
-            if(strncmp(cache_err_time, err_time, MAX_ERROR_LEN) == 0){ 
-                // ERRLOG not affected by error 
-                print_debug("Errlog not modified by last error\n");
-                env_export(&env, "ERRLOG", ""); // no details attached to this error
-                print_error("EXECUTION ERROR", err_descr, NULL);
 
-            } else {
-                // ERRLOG set to error description 
-                char *errlog = expand_var(&env, "ERRLOG");
-                print_error("EXECUTION ERROR", err_descr, errlog);
-                free(errlog);
-            }
+            // errlog
+            char errlog[MAX_ERROR_LEN];
+            ssize_t n = read(err_pipe[0], errlog, sizeof(errlog) - 1);
 
-            env_export(&env, "ERRCMD", "%s", line);
-            
-            free(err_time);
+            if(n < 0) { errlog[0] = '\0'; n = 1; }
+            else{ errlog[n] = '\0'; }
+
+            env_export(&env, "ERRLOG", "%s", errlog);
+
+            print_error("EXECUTION ERROR", err_descr, errlog);
         }
-
+        
+        close(err_pipe[0]);
         
         // ----- FREE ALLOCATED DATA ------------------------------------------
         free_token_chain(lex_res.tk_chain);
         free_ast(parse_res.ast);
-        free(cache_err_time);
     }
 
     return 0;

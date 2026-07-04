@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
 
 #include "token_chain.h"
 #include "env.h"
@@ -11,6 +12,6 @@
 #include "exec_internal.h"
 #include "exec_rules.h"
 
-int run_ast(env_t *env, ast_node_t *ast, int fd_in, int fd_out);
+int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_fd_err);
 
 #endif
