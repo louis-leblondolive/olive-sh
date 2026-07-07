@@ -20,7 +20,7 @@ job_t *job_init(pid_t pg_id, char *job_cmd){
 void free_job(job_t *job){
     if(!job) return;
 
-    free(job->job_cmd);
+    if(job->job_cmd) free(job->job_cmd);
     free(job);
 }
 

@@ -9,6 +9,8 @@
 #include "token_chain.h"
 #include "env.h"
 #include "ast.h"
+#include "job_table.h"
+#include "job_ctl.h"
 #include "exec_internal.h"
 #include "exec_rules.h"
 

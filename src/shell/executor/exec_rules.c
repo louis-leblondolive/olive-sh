@@ -49,10 +49,21 @@ void clean_io_fds(int fd_in, int fd_out, int default_fd_in, int default_fd_out){
 }
 
 
-void close_pipe(int *pipe){
-    if(!pipe) return;
-    close(pipe[0]);
-    close(pipe[1]);
+int open_cloexec_pipe(int fds[2]){
+
+    if(pipe(fds) != 0){
+        perror("pipe");
+        return 1;
+    }
+    fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+    fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+
+    return 0;
+}
+
+void close_pipe(int fds[2]){
+    close(fds[0]);
+    close(fds[1]);
 }
 
 
@@ -62,78 +73,3 @@ int clean_result(int raw_res){
     else return WEXITSTATUS(raw_res);
 }
 
-
-
-int setup_redirs(env_t *env, ast_node_t *cmd_node, int *fd_in, int *fd_out){
-
-    for(redir_t *red = cmd_node->redirs->first; red != NULL; red = red->next){
-
-        char *red_target = expand_segment_chain(env, red->target);
-        if(!red_target){
-            char *unbound_info = expand_var(env, "ERRLOG");
-            env_export(env, "ERRLOG", "olive-sh: failed to resolve redirection target (%s)\n", unbound_info);
-            free(unbound_info);
-            free(red_target);
-            return -1;
-        }
-
-        if(red->type == TOKEN_REDIR_IN){
-            if(*fd_in != STDIN_FILENO) close(*fd_in);
-            *fd_in = open(red_target, O_RDONLY, 0644);
-            if(*fd_in < 0){
-                env_export(env, "ERRLOG", "olive-sh: < %s: failed to open redirection target", red_target);
-                free(red_target);
-                return -1;
-            }
-        }
-        else if(red->type == TOKEN_REDIR_OUT){
-            if(*fd_out != STDOUT_FILENO) close(*fd_out);
-            *fd_out = open(red_target, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            if(*fd_out < 0){
-                env_export(env, "ERRLOG", "olive-sh: > %s: failed to open redirection target", red_target);
-                free(red_target);
-                return -1;
-            }
-        }
-        else if(red->type == TOKEN_APPEND){
-            if(*fd_out != STDOUT_FILENO) close(*fd_out);
-            *fd_out = open(red_target, O_WRONLY | O_CREAT | O_APPEND, 0644);
-            if(*fd_out < 0){
-                env_export(env, "ERRLOG", "olive-sh: >> %s: failed to open redirection target", red_target);
-                free(red_target);
-                return -1;
-            }
-        }
-
-        free(red_target);
-    }
-
-    return 0;
-}
-
-
-int setup_params(env_t *env, ast_node_t *cmd_node, int *argc, char ***argv, char ***envp){
-    
-    *argc = count_args(cmd_node->argv);
-    print_debug("argc setup\n");
-
-    *argv = arg_chain_to_array(env, cmd_node->argv);
-    if(!*argv){
-        char *unbound_info = expand_var(env, "ERRLOG");
-        env_export(env, "ERRLOG", "olive-sh: failed to resolve argument chain (%s)", unbound_info);
-        free(unbound_info);
-        return -1;
-    }
-    print_debug("argv setup\n");
-    
-    *envp = env_chain_to_array(env);
-    if(!*envp){
-        char *unbound_info = expand_var(env, "ERRLOG");
-        env_export(env, "ERRLOG", "olive-sh: couldn't resolve environment (%s)\n", unbound_info);
-        free_arg_array(*argv);
-        return -1;
-    }
-    print_debug("envp setup\n");
-
-    return 0;
-}

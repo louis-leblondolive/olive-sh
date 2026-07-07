@@ -6,6 +6,9 @@ int run_shell(char **envp){
     lexer_res_t lex_res;
     parse_res_t parse_res;
 
+    // ----- SHELL INIT -----------------------------------------------------------------------------
+    int init_res = 0;
+
     // Init signal handlers
     if(init_shell_sa_handlers() != 0){
         perror("sigaction");
@@ -14,7 +17,7 @@ int run_shell(char **envp){
 
     // Init environment 
     env_t env = NULL;
-    int init_res = env_array_to_chain(envp, &env);
+    init_res = env_array_to_chain(envp, &env);
     if(init_res != 0){
         print_error("SYSTEM ERROR", "failed to initialize environment", "environment initialization failed");
         free_env(env);
@@ -31,7 +34,18 @@ int run_shell(char **envp){
         return init_res;
     }
 
+    // Init foreground job
+    g_shell_pgid = getpgid(0);
+    if(g_shell_pgid < 0){
+        perror("getpgid");
+        free_env(env);
+        return 1;
+    }
 
+    init_res = set_shell_foreground();
+    if(init_res != 0) return init_res;
+
+    // ----- MAIN SHELL LOOP -----------------------------------------------------------------------------
     while(1){
 
         if(sigsetjmp(jump_buffer, 1) != 0){
@@ -151,10 +165,15 @@ int run_shell(char **envp){
         
         close(err_pipe[0]);
         
-        // ----- FREE ALLOCATED DATA ------------------------------------------
+        print_debug("Done execution\n");
+
+        // ----- CLEAN --------------------------------------------------
         free_token_chain(lex_res.tk_chain);
         free_ast(parse_res.ast);
     }
+
+    free_env(env);
+    free_job(g_foreground_job);
 
     return 0;
 }

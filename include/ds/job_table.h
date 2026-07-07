@@ -11,8 +11,7 @@
  * manipulate job tables in the executor. 
  */
 
-
-//  ----- JOB MANAGEMENT -----------------------------------------------
+// ----- TYPES --------------------------------------------------------
 /**
  * @brief Status of a job execution, determining whether it is running or not. 
  */
@@ -32,6 +31,18 @@ typedef struct job_s {
 } job_t; 
 
 /**
+ * @brief Type of a job table.
+ * @note The job table is implemented as a dynamic table. The capacity field usage is only relevant 
+ *  for internal table operations (ex. : adding an element).
+ */
+typedef struct job_table_s {
+    size_t capacity;   /** Table current maximal size */
+    job_t **tbl;       /** Job table */
+} job_table_t;
+
+
+//  ----- JOB MANAGEMENT -----------------------------------------------
+/**
  * @brief Creates a new job
  * @warning The created job will have it's job id set to -1. Job id assignation occurs when the job is 
  *  added to a job table.
@@ -46,15 +57,6 @@ void free_job(job_t *job);
 
 
 //  ----- JOB MANAGEMENT -----------------------------------------------
-/**
- * @brief Type of a job table.
- * @note The job table is implemented as a dynamic table. The capacity field usage is only relevant 
- *  for internal table operations (ex. : adding an element).
- */
-typedef struct job_table_s {
-    size_t capacity;   /** Table current maximal size */
-    job_t **tbl;       /** Job table */
-} job_table_t;
 
 /**
  * @brief Creates a fresh job table. 

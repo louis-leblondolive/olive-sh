@@ -91,7 +91,6 @@ second
 
 # Pipe exit status is last command status 
 >  cat /nonexistent | wc -l
-cat: /nonexistent: No such file or directory
 0
 > echo $?
 0

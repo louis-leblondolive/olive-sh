@@ -13,6 +13,7 @@
 #include "parser.h"
 #include "executor.h"
 #include "signals.h"
+#include "job_ctl.h"
 #include "printer.h"
 
 int run_shell(char **envp);

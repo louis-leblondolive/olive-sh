@@ -23,9 +23,9 @@ int init_shell_sa_handlers(void){
     sigemptyset(&sa_ignore.sa_mask);
 
     if(sigaction(SIGQUIT, &sa_ignore, NULL) == -1) return 1;
-
     if(sigaction(SIGTSTP, &sa_ignore, NULL) == -1) return 1;
-
+    if(sigaction(SIGTTIN, &sa_ignore, NULL) == -1) return 1;
+    if(sigaction(SIGTTOU, &sa_ignore, NULL) == -1) return 1;
 
     // Handle SIGINT
     struct sigaction sa_int;
@@ -43,6 +43,8 @@ int reset_sa_handlers(void){
     if(signal(SIGINT, SIG_DFL) == SIG_ERR) return 1;
     if(signal(SIGQUIT, SIG_DFL) == SIG_ERR) return 1;
     if(signal(SIGTSTP, SIG_DFL) == SIG_ERR) return 1;
+    if(signal(SIGTTIN, SIG_DFL) == SIG_ERR) return 1;
+    if(signal(SIGTTOU, SIG_DFL) == SIG_ERR) return 1;
 
     return 0;
 }
