@@ -10,8 +10,9 @@ job_t *job_init(pid_t pg_id, char *job_cmd){
 
     res->job_id = -1;
     res->pg_id = pg_id;
-    res->job_cmd = job_cmd;
     res->status = RUNNING;
+    if(!job_cmd) res->job_cmd = (char*)calloc(1, sizeof(char));
+    else res->job_cmd = job_cmd;
 
     return res;
 }
@@ -24,6 +25,20 @@ void free_job(job_t *job){
     free(job);
 }
 
+
+void update_job_cmd(job_t *job, char *cmd){
+    if(!job) return; 
+    if(job->job_cmd) free(job->job_cmd);
+
+    if(!cmd){
+        job->job_cmd = (char*)calloc(1, sizeof(char));
+        return;
+    }
+
+    char *new_cmd = strdup(cmd);
+    job->job_cmd = new_cmd;
+
+}
 
 //  ----- JOB TABLE OPERATIONS -----------------------------------------------
 

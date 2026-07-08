@@ -171,6 +171,7 @@ ast_node_t *init_node(void){
     new->argv = argv;
     new->redirs = redirs;
     new->token = TOKEN_WORD;
+    new->str_cmd = NULL;
 
     return new;
 }
@@ -184,6 +185,8 @@ void free_ast(ast_node_t *root){
 
     free_redir_chain(root->redirs);
     free_argv(root->argv);
+
+    free(root->str_cmd);
 
     free(root);
 

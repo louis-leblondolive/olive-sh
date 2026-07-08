@@ -17,7 +17,7 @@ parse_res_t build_ast(token_chain_t *tk_chain){
 
     ast_node_t *cur_ast = build_delim_node(NULL, tk_chain, &parse_res);
 
-    if(!cur_ast || !parse_res.success){    // error while parsing
+    if(!cur_ast || !parse_res.success || build_ast_text_cmd(cur_ast) != 0){    // error while parsing
         return parse_res;      
     }
 

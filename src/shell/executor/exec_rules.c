@@ -70,6 +70,10 @@ void close_pipe(int fds[2]){
 int clean_result(int raw_res){
     if(WIFSIGNALED(raw_res))
         return 128 + WTERMSIG(raw_res);
+
+    else if(WIFSTOPPED(raw_res))
+        return 128 + WSTOPSIG(raw_res);
+
     else return WEXITSTATUS(raw_res);
 }
 

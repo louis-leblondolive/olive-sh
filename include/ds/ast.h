@@ -68,6 +68,8 @@ typedef struct ast_node_s {
     argv_t *argv;               /** The argument chained-list of the node. */
     redir_chain_t *redirs;      /** The redirection chained-list of the node. */
     
+    char *str_cmd;              /** The text command represented by the ast  */ 
+
 } ast_node_t;
 
 

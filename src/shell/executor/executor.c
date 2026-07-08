@@ -59,9 +59,9 @@ int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_
                 if(left_chld == 0) group_pgid = getpid();
                 else group_pgid = left_chld;
             }   
-                
+
             if(is_leader){  // set new leader 
-                char *cmd = NULL;   // update later
+                char *cmd = strdup(ast->str_cmd);   
                 job_t *new_leader = job_init(group_pgid, cmd);
 
                 if(!new_leader){
@@ -75,7 +75,6 @@ int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_
 
                 // run left child 
             setpgid(left_chld, group_pgid);
-
             if(left_chld == 0) {    
                 close(io_pipe[0]);
                 exit(run_ast(env, ast->left, std_fd_in, io_pipe[1], left_err_pipe[1]));
@@ -90,9 +89,8 @@ int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_
                 return 1; 
             }
 
+            // run right child 
             setpgid(right_chld, group_pgid);
-
-                // run right child 
             if(right_chld == 0) {
                 close(io_pipe[1]);
                 exit(run_ast(env, ast->right, io_pipe[0], std_fd_out, right_err_pipe[1]));
@@ -120,8 +118,16 @@ int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_
                     else break;
                 }
 
-                if(done_id == left_chld){  l_status = res; l_done = true; }
-                if(done_id == right_chld){ r_status = res; r_done = true; }
+                if(done_id == left_chld){ 
+                    l_status = res; 
+                    l_done = true; 
+                    if(!r_done && ast->right) update_job_cmd(g_foreground_job, ast->right->str_cmd);
+                }
+                if(done_id == right_chld){ 
+                    r_status = res; 
+                    r_done = true; 
+                    if(!l_done && ast->left) update_job_cmd(g_foreground_job, ast->left->str_cmd);
+                }
             }
 
             if(is_leader) set_shell_foreground();
@@ -222,8 +228,8 @@ int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_
                     else leader_pid = cmd_pid;
                 }
                 
+                setpgid(cmd_pid, leader_pid);
                 if(cmd_pid == 0){
-                    setpgid(0, leader_pid);
                     exit(run_cmd_async(env, argv, envp, fd_in, fd_out, std_fd_err));
                 }
 

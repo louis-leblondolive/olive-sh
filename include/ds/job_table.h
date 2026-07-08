@@ -2,6 +2,7 @@
 #define JOB_TABLE
 
 #include <stdlib.h>
+#include <string.h>
 
 /**
  * @file job_table.h
@@ -46,14 +47,22 @@ typedef struct job_table_s {
  * @brief Creates a new job
  * @warning The created job will have it's job id set to -1. Job id assignation occurs when the job is 
  *  added to a job table.
+ * @note If the given command is NULL, an empty string will be assigned to the corresponding field. 
  * @return A pointer to the new job, or NULL on error. 
  */
-job_t *job_init(pid_t pg_id, char *job_cmd);    // warning : job id is set when the job is added to the job table 
+job_t *job_init(pid_t pg_id, char *job_cmd);     
 
 /**
  * @brief Frees the job referenced by the given pointer. 
  */
 void free_job(job_t *job);
+
+/**
+ * @brief Update the value of a job command. 
+ * @note This function will duplicate the given command. If the command is NULL, 
+ * the job command will be set to an empty string. 
+ */
+void update_job_cmd(job_t *job, char *cmd);
 
 
 //  ----- JOB MANAGEMENT -----------------------------------------------

@@ -16,5 +16,6 @@ ast_node_t *build_pipe_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_
 ast_node_t *build_and_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res);
 ast_node_t *build_or_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res);
 ast_node_t *build_delim_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse_res_t *parse_res);
+int build_ast_text_cmd(ast_node_t *root);
 
 #endif

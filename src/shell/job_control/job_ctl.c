@@ -11,10 +11,7 @@ bool is_shell_foreground(void){
 
 int set_shell_foreground(void){
 
-    char *empty_cmd = (char*)malloc(sizeof(char));
-    empty_cmd[0] = '\0';
-
-    job_t *new_fg_job = job_init(g_shell_pgid, empty_cmd);
+    job_t *new_fg_job = job_init(g_shell_pgid, NULL);
     if(!new_fg_job) return 1;
 
     if(g_foreground_job) free_job(g_foreground_job);

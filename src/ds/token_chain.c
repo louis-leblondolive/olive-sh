@@ -138,6 +138,40 @@ char *expand_segment_chain(env_t *env, segment_t *chain){
 }
 
 
+char *segment_chain_to_str(segment_t *chain){
+    if(!chain) return NULL;
+
+    // Determine the length of the string
+    size_t len = 0;
+    for (segment_t *node = chain; node != NULL; node = node->next){
+        len += strlen(node->value);
+        if(node->type == SEG_VAR) len ++; // counting missing '$'
+    }
+
+    // Build the string 
+    char *res = (char*)malloc(sizeof(char) * (len + 1));
+    if(!res) return NULL;
+
+    size_t cnt = 0;
+    for (segment_t *node = chain; node != NULL; node = node->next){
+
+        if(node->type == SEG_VAR){
+            res[cnt] = '$';
+            cnt ++;
+        }
+
+        size_t loc_len = strlen(node->value);
+        for (size_t i = 0; i < loc_len; i++){   
+            res[cnt] = node->value[i];
+            cnt ++;
+        }
+    }
+
+    res[cnt] = '\0';
+    return res;
+}
+
+
 //  ----- TOKEN CHAINS OPERATIONS -----------------------------------------------
 
 char *token_to_str(token_e token){
