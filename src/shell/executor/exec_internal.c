@@ -1,4 +1,5 @@
 #include "exec_internal.h"
+#include "executor.h"
 
 
 int run_cmd_async(env_t *env, char **argv, char **envp, int fd_in, int fd_out, int fd_err){
@@ -104,7 +105,121 @@ int run_builtin(int id, int argc, char **argv, env_t *env, int fd_in, int fd_out
 }
 
 
+exec_res_t run_pipe_children(env_t *env, job_table_t *job_tbl, ast_node_t *ast, 
+    pid_t group_pgid, 
+    int std_fd_in, int std_fd_out, int err_out_fd){
 
+    // --- Setup pipes ---------------
+    int io_pipe[2];
+    int left_err_pipe[2];
+    int right_err_pipe[2];
+
+    if(open_cloexec_pipe(io_pipe) != 0) 
+        return exec_res_from_builtin(1);
+    if(open_cloexec_pipe(left_err_pipe) != 0) 
+        { close_pipe(io_pipe); return exec_res_from_builtin(1); }
+    if(open_cloexec_pipe(right_err_pipe) != 0) 
+        { close_pipe(io_pipe); close_pipe(left_err_pipe); return exec_res_from_builtin(1); }
+
+    // --- Handle children ------------
+
+        // Init left child 
+    pid_t left_chld = fork();
+    if(left_chld == -1) { 
+        perror("fork"); 
+        close_pipe(io_pipe);
+        close_pipe(left_err_pipe); close_pipe(right_err_pipe);
+        return exec_res_from_builtin(1); 
+    }
+                        
+        // Run left child 
+    setpgid(left_chld, group_pgid);
+    if(left_chld == 0) {    
+        close(io_pipe[0]);
+        reset_sa_handlers();
+
+        exec_res_t cache_res = run_ast(env, job_tbl, ast->left, std_fd_in, io_pipe[1], left_err_pipe[1]);
+
+        switch (cache_res.kind){
+            case RES_EXITED: exit(cache_res.exit_code);
+            case RES_STOPPED: exit(128 + cache_res.stop_sig);
+            case RES_SIGNALED: exit(128 + cache_res.term_sig);
+            default: exit(1);
+        }
+    }
+
+        // Init right child
+    pid_t right_chld = fork();
+    if(right_chld == -1) { 
+        perror("fork"); 
+        close_pipe(io_pipe);
+        close_pipe(left_err_pipe); close_pipe(right_err_pipe);
+        return exec_res_from_builtin(1); 
+    }
+
+        // Run right child 
+    setpgid(right_chld, group_pgid);
+    if(right_chld == 0) {
+        close(io_pipe[1]);
+        reset_sa_handlers();
+
+        exec_res_t cache_res = run_ast(env, job_tbl, ast->right, io_pipe[0], std_fd_out, right_err_pipe[1]);
+
+        switch (cache_res.kind){
+            case RES_EXITED: exit(cache_res.exit_code);
+            case RES_STOPPED: exit(128 + cache_res.stop_sig);
+            case RES_SIGNALED: exit(128 + cache_res.term_sig);
+            default: exit(1);
+        }
+    }   
+
+        // Clean pipes 
+    close_pipe(io_pipe);
+    close(left_err_pipe[1]);
+    close(right_err_pipe[1]);
+
+    // --- Wait for jobs ----------
+    pid_t done_id;
+    int res; 
+    int l_status = 0; int r_status = 0; 
+    bool l_done = false; bool r_done = false; 
+
+    while(!(r_done && l_done)){
+                            
+        done_id = waitpid(-g_foreground_job->pgid, &res, WUNTRACED);
+        if(done_id < 0){ if(errno == EINTR) continue; else break; }
+
+        if(done_id == left_chld){ 
+            if(WIFSTOPPED(res)) continue;
+            l_status = res; 
+            l_done = true; 
+            if(!r_done && ast->right) update_job_cmd(g_foreground_job, ast->right->str_cmd);
+        }
+        if(done_id == right_chld){ 
+            if(WIFSTOPPED(res)) continue;
+            r_status = res; 
+            r_done = true; 
+            if(!l_done && ast->left) update_job_cmd(g_foreground_job, ast->left->str_cmd);
+        }
+    }
+
+    // --- Clean and exit ---------------
+    int exit_status;
+
+    if(l_status != 0 && cfg_infos.pipefail){
+        relay_child_error(left_err_pipe[0], err_out_fd); 
+        exit_status = l_status;
+    }
+    else{
+        if(r_status != 0) relay_child_error(right_err_pipe[0], err_out_fd); 
+        exit_status = r_status;
+    }
+
+    close(left_err_pipe[0]);
+    close(right_err_pipe[0]);
+                
+    return exec_res_from_waitpid_status(exit_status);
+}
 
 
 int setup_redirs(env_t *env, ast_node_t *cmd_node, int *fd_in, int *fd_out){

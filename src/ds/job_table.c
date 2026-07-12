@@ -3,13 +3,15 @@
 
 //  ----- JOB MANAGEMENT -----------------------------------------------
 
-job_t *job_init(pid_t pg_id, char *job_cmd){
+job_t *job_init(pid_t pgid, pid_t leader_pid, int std_err_fd, char *job_cmd){
 
     job_t *res = (job_t*)malloc(sizeof(job_t));
     if(!res) return NULL;
 
     res->job_id = -1;
-    res->pg_id = pg_id;
+    res->pgid = pgid;
+    res->leader_pid = leader_pid;
+    res->leader_std_err_fd = std_err_fd;
     res->status = RUNNING;
     if(!job_cmd) res->job_cmd = (char*)calloc(1, sizeof(char));
     else res->job_cmd = job_cmd;

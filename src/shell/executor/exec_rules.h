@@ -6,6 +6,7 @@
 #include <fcntl.h>
 
 #include "ast.h"
+#include "exec_result.h"
 #include "builtins.h"
 #include "printer.h"
 
@@ -14,6 +15,11 @@
  * 
  * @brief Provides utilitaries functions and rule verifiers used in the executor. 
  */
+
+
+exec_res_t exec_res_from_builtin(int exit_code);
+exec_res_t exec_res_from_waitpid_status(int status);
+
 
 /**
  * @brief Determines whether a command is builtin or not. 
@@ -26,11 +32,6 @@ int is_builtin(char *cmd_name);
  * @return NULL on error, command path otherwise 
  */
 char *find_cmd_path(env_t *env, char *cmd);
-
-/**
- * @brief Returns the real result of a forked or signal-interupted process  
- */
-int clean_result(int raw_res);
 
 
 /**

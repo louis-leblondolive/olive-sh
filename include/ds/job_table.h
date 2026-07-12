@@ -13,6 +13,7 @@
  */
 
 // ----- TYPES --------------------------------------------------------
+
 /**
  * @brief Status of a job execution, determining whether it is running or not. 
  */
@@ -26,7 +27,9 @@ typedef enum job_status {
  */
 typedef struct job_s {
     int job_id;             /** job id provided by the shell to the user */
-    pid_t pg_id;            /** job group pid */
+    pid_t pgid;             /** job group pid */
+    pid_t leader_pid;       /** job leading process pid */
+    int leader_std_err_fd;  /** job leading process standard error output fd */
     job_status_e status;    /** job execution status */
     char *job_cmd;          /** job underlying command */
 } job_t; 
@@ -50,7 +53,7 @@ typedef struct job_table_s {
  * @note If the given command is NULL, an empty string will be assigned to the corresponding field. 
  * @return A pointer to the new job, or NULL on error. 
  */
-job_t *job_init(pid_t pg_id, char *job_cmd);     
+job_t *job_init(pid_t pgid, pid_t leader_pid, int std_err_fd, char *job_cmd);     
 
 /**
  * @brief Frees the job referenced by the given pointer. 

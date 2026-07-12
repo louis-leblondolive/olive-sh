@@ -2,162 +2,135 @@
 #include "exec_internal.h"
 
 
-int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_fd_err){
+exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
+     ast_node_t *ast, int std_fd_in, int std_fd_out, int std_fd_err){
 
-    if(!ast) return 0;
+    if(!ast) return exec_res_from_builtin(0);
 
-    int cache_res;
+    exec_res_t cache_res;
     switch(ast->token){
 
         // --- OPERATORS --------------------------------------------------
 
         case TOKEN_SEQ:
-            run_ast(env, ast->left, std_fd_in, std_fd_out, std_fd_err);
-            return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
+            run_ast(env, job_tbl, ast->left, std_fd_in, std_fd_out, std_fd_err);
+            return run_ast(env, job_tbl, ast->right, std_fd_in, std_fd_out, std_fd_err);
+
 
         case TOKEN_AND:
-            cache_res = run_ast(env, ast->left, std_fd_in, std_fd_out, std_fd_err);
-            if(cache_res != 0) return cache_res;
-            return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
+            cache_res = run_ast(env, job_tbl, ast->left, std_fd_in, std_fd_out, std_fd_err);
+
+            if(cache_res.kind != RES_EXITED || cache_res.exit_code != 0) 
+                return cache_res;
+
+            return run_ast(env, job_tbl, ast->right, std_fd_in, std_fd_out, std_fd_err);
+
 
         case TOKEN_OR:
-            cache_res = run_ast(env, ast->left, std_fd_in, std_fd_out, std_fd_err);
-            if(cache_res == 0) return 0;
-            return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
+            cache_res = run_ast(env, job_tbl, ast->left, std_fd_in, std_fd_out, std_fd_err);
+
+            if(cache_res.kind == RES_EXITED && cache_res.exit_code == 0) 
+                return cache_res;
+
+            return run_ast(env, job_tbl, ast->right, std_fd_in, std_fd_out, std_fd_err);
 
         // --- PIPELINE ----------------------------------------------------
 
         case TOKEN_PIPE: {
 
-            // --- Setup pipes ---------------
-            int io_pipe[2];
-            int left_err_pipe[2];
-            int right_err_pipe[2];
-
-            if(open_cloexec_pipe(io_pipe) != 0) return 1;
-            if(open_cloexec_pipe(left_err_pipe) != 0) { close_pipe(io_pipe); return 1; }
-            if(open_cloexec_pipe(right_err_pipe) != 0) { 
-                close_pipe(io_pipe); close_pipe(left_err_pipe); return 1; }
-
-            // --- Run left and right nodes ---------------
-            
             bool is_leader = is_shell_foreground();
 
-                // init left child 
-            pid_t left_chld = fork();
-            if(left_chld == -1) { 
-                perror("fork"); 
-                close_pipe(io_pipe);
-                close_pipe(left_err_pipe); close_pipe(right_err_pipe);
-                return 1; 
-            }
+            char *cmd = strdup(ast->str_cmd);
+            job_t *leader_job = NULL;
 
-                // determine pgid
-            pid_t group_pgid;
-            if(!is_leader) group_pgid = g_foreground_job->pg_id;
-            else {
-                if(left_chld == 0) group_pgid = getpid();
-                else group_pgid = left_chld;
-            }   
+            if(is_leader){
 
-            if(is_leader){  // set new leader 
-                char *cmd = strdup(ast->str_cmd);   
-                job_t *new_leader = job_init(group_pgid, cmd);
-
-                if(!new_leader){
-                    close_pipe(io_pipe); close_pipe(left_err_pipe); close_pipe(right_err_pipe);
-                    if(left_chld == 0) exit(1);
-                    else return 1;
+                int err_pipe[2];
+                if(pipe(err_pipe) != 0){
+                    perror("pipe");
+                    return exec_res_from_builtin(1);
                 }
 
-                update_foreground_job(new_leader);
+                pid_t leader_pid = fork();
+                switch(leader_pid){
+
+                    case -1:    
+                        perror("fork");
+                        return exec_res_from_builtin(1);
+
+                    case 0: 
+                        if(reset_sa_handlers() != 0){
+                            perror("signal");
+                            exit(1);
+                        }
+
+                            // Init new leader
+                        leader_pid = getpid();
+                        setpgid(0, leader_pid);
+                        
+                        leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
+                        update_foreground_job(leader_job);
+
+                            // Run pipe node 
+                        exec_res_t pipe_res = run_pipe_children(env, job_tbl, ast, leader_pid, 
+                            std_fd_in, std_fd_out, err_pipe[1]);
+                        
+                        close_pipe(err_pipe);
+
+                        switch(pipe_res.kind){
+                            case RES_EXITED: exit(pipe_res.exit_code);
+                            case RES_STOPPED: exit(pipe_res.stop_sig);
+                            case RES_SIGNALED: exit(pipe_res.term_sig);
+                            default: exit(1);
+                        }
+                        
+
+                    default:
+                        close(err_pipe[1]);
+
+                            // Init new leader
+                        leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
+                        update_foreground_job(leader_job);
+
+                            // Run pipe node foreground 
+                        setpgid(leader_pid, leader_pid);
+                        tcsetpgrp(STDIN_FILENO, leader_pid);
+
+                        int exit_status; 
+                        waitpid(leader_pid, &exit_status, WUNTRACED);
+
+                            // Clean and exit 
+                        if(WIFSTOPPED(exit_status)){
+                            if(suspend_job(job_tbl, g_foreground_job) != 0){
+                                dprintf(std_fd_err, "Error during job suspension\n");
+                                close(err_pipe[0]);
+                                return exec_res_from_builtin(1);
+                            }
+
+                            return exec_res_from_waitpid_status(exit_status);
+                        }
+
+                        if(exit_status != 0) relay_child_error(err_pipe[0], std_fd_err);
+                        close(err_pipe[0]);
+
+                        set_shell_foreground();
+
+                        return exec_res_from_waitpid_status(exit_status);
+                }  
             }
+            else { // Intermediate supervisor  
+                pid_t group_pgid = g_foreground_job->pgid;
 
-                // run left child 
-            setpgid(left_chld, group_pgid);
-            if(left_chld == 0) {    
-                close(io_pipe[0]);
-                exit(run_ast(env, ast->left, std_fd_in, io_pipe[1], left_err_pipe[1]));
+                return run_pipe_children(env, job_tbl, ast, group_pgid, 
+                    std_fd_in, std_fd_out, std_fd_err);
             }
-
-                // init right child 
-            pid_t right_chld = fork();
-            if(right_chld == -1) { 
-                perror("fork"); 
-                close_pipe(io_pipe);
-                close_pipe(left_err_pipe); close_pipe(right_err_pipe);
-                return 1; 
-            }
-
-            // run right child 
-            setpgid(right_chld, group_pgid);
-            if(right_chld == 0) {
-                close(io_pipe[1]);
-                exit(run_ast(env, ast->right, io_pipe[0], std_fd_out, right_err_pipe[1]));
-            }   
-
-                // foreground new leader
-            if(is_leader) tcsetpgrp(STDIN_FILENO, group_pgid);
-
-                // clean pipes 
-            close_pipe(io_pipe);
-            close(left_err_pipe[1]);
-            close(right_err_pipe[1]);
-
-            // --- Wait for jobs ----------
-            pid_t done_id;
-            int res; 
-            int l_status = 0; int r_status = 0; 
-            bool l_done = false; bool r_done = false; 
-
-            while(!(r_done && l_done)){
-                
-                done_id = waitpid(-g_foreground_job->pg_id, &res, WUNTRACED);
-                if(done_id < 0){
-                    if(errno == EINTR) continue;
-                    else break;
-                }
-
-                if(done_id == left_chld){ 
-                    l_status = res; 
-                    l_done = true; 
-                    if(!r_done && ast->right) update_job_cmd(g_foreground_job, ast->right->str_cmd);
-                }
-                if(done_id == right_chld){ 
-                    r_status = res; 
-                    r_done = true; 
-                    if(!l_done && ast->left) update_job_cmd(g_foreground_job, ast->left->str_cmd);
-                }
-            }
-
-            if(is_leader) set_shell_foreground();
-
-            // --- Clean and exit ---------------
-            l_status = clean_result(l_status);
-            r_status = clean_result(r_status);
-
-            int exit_status;
-
-            if(l_status != 0 && cfg_infos.pipefail){
-                relay_child_error(left_err_pipe[0], std_fd_err); 
-                exit_status = l_status;
-            }
-            else{
-                if(r_status != 0) relay_child_error(right_err_pipe[0], std_fd_err); 
-                exit_status = r_status;
-            }
-
-            close(left_err_pipe[0]);
-            close(right_err_pipe[0]);
-
-            return exit_status;
         }
         
         // --- BACKGROUND ---------------------------------------------------
 
         case TOKEN_AMP: 
             print_error("EXECUTION ERROR", "'&' operator not yet implemented", "");
-            return 1;
+            return exec_res_from_builtin(1);
 
         // --- SIMPLE COMMAND ------------------------------------------------
 
@@ -172,7 +145,7 @@ int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_
 
                 char *errlog = expand_var(env, "ERRLOG");
                 write(std_fd_err, errlog, strlen(errlog));
-                return 1;
+                return exec_res_from_builtin(1);
             }
 
             char *cmd_name = strdup(argv[0]);
@@ -197,62 +170,112 @@ int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_
                
                 clean_exec_vars(argv, envp);
                 clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
-                return 1;
+                return exec_res_from_builtin(1);
             }
 
             // ----- RUN -----
-            int exit_status;
+            exec_res_t exec_res;
 
             int builtin_id = is_builtin(cmd_name);
             if(builtin_id >= 0){  // -------------- Run builtin command 
-                exit_status = run_builtin(builtin_id, argc, argv, env, fd_in, fd_out);
+                int exit_status = run_builtin(builtin_id, argc, argv, env, fd_in, fd_out);
 
                 if(exit_status != 0){
                     char *errlog = expand_var(env, "ERRLOG");
                     write(std_fd_err, errlog, strlen(errlog));
                 }
+
+                exec_res = exec_res_from_builtin(exit_status);
             }
             
             else { // ----------------------------- Run external command 
 
                 bool is_leader = is_shell_foreground();
 
-                pid_t cmd_pid = fork();
-                if(cmd_pid == -1){ perror("fork"); exit_status = 1; break; }
-                
-                    // determine pgid 
-                pid_t leader_pid;
-                if(!is_leader) leader_pid = g_foreground_job->pg_id;
-                else {
-                    if(cmd_pid == 0) leader_pid = getpid();
-                    else leader_pid = cmd_pid;
-                }
-                
-                setpgid(cmd_pid, leader_pid);
-                if(cmd_pid == 0){
-                    exit(run_cmd_async(env, argv, envp, fd_in, fd_out, std_fd_err));
-                }
+                if(is_leader){
 
-                if(is_leader){  // set new leader 
-                    job_t *new_leader_job = job_init(leader_pid, cmd_name);
-                    
-                    if(!new_leader_job){
-                        if(cmd_pid == 0) exit(1);
-                        else { exit_status = 1; break; }
+                    int err_pipe[2];
+                    if(pipe(err_pipe) != 0){
+                        perror("pipe");
+                        clean_exec_vars(argv, envp);
+                        clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
+                        return exec_res_from_builtin(1);
                     }
 
-                    update_foreground_job(new_leader_job);
-                    tcsetpgrp(STDIN_FILENO, leader_pid);
+                    char *cmd = strdup(ast->str_cmd);
+                    job_t *leader_job = NULL;
+                    int exit_status = -1;
+
+                    pid_t leader_pid = fork();
+                    switch(leader_pid){
+
+                        case -1:
+                            perror("fork");
+                            clean_exec_vars(argv, envp);
+                            clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
+                            return exec_res_from_builtin(1);
+
+                        case 0:
+                            if(reset_sa_handlers() != 0){
+                                perror("signal");
+                                exit(1);
+                            }
+
+                            leader_pid = getpid();
+                            setpgid(0, leader_pid);
+
+                                // Init leader job  
+                            
+                            leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
+                            update_foreground_job(leader_job);
+
+                                // Run command
+                            exit_status = run_cmd_async(env, argv, envp, fd_in, fd_out, err_pipe[1]);
+                            close_pipe(err_pipe);
+
+                            exit(exit_status);
+
+
+                        default:
+                            close(err_pipe[1]);
+
+                                // Init leader job  
+                            leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
+                            update_foreground_job(leader_job);
+
+                                // Run command foreground
+                            setpgid(leader_pid, leader_pid);
+                            tcsetpgrp(STDIN_FILENO, leader_pid);
+
+                            waitpid(leader_pid, &exit_status, WUNTRACED);
+
+                                // Clean and exit 
+                            if(WIFSTOPPED(exit_status)){
+                                if(suspend_job(job_tbl, g_foreground_job) != 0){
+                                    dprintf(std_fd_err, "Error during job suspension\n");
+                                    close(err_pipe[0]);
+                                    return exec_res_from_builtin(1);
+                                }
+
+                                return exec_res_from_waitpid_status(exit_status);
+                            }
+
+                            if(exit_status != 0) relay_child_error(err_pipe[0], std_fd_err);
+                            close(err_pipe[0]);
+
+                            set_shell_foreground();
+
+                            return exec_res_from_waitpid_status(exit_status);
+                    }
+                } 
+                else { // already in a forked process
+
+                    int exit_status = run_cmd_async(env, argv, envp, fd_in, fd_out, std_fd_err);
+                    exec_res = exec_res_from_builtin(exit_status);
                 }
 
-                    // wait and clean
-                int raw_res;
-                waitpid(cmd_pid, &raw_res, WUNTRACED);
+            } // end run external
 
-                if(is_leader) set_shell_foreground();
-
-                exit_status = clean_result(raw_res);
-            }
 
             // ----- CLEAN -----
             clean_exec_vars(argv, envp);
@@ -260,13 +283,13 @@ int run_ast(env_t *env, ast_node_t *ast, int std_fd_in, int std_fd_out, int std_
 
             print_debug("Done running command\n");
 
-            return exit_status;
+            return exec_res;
         }
 
 
         default:        // unreachable
-            return 1;
+            return exec_res_from_builtin(1);
     }
 
-    return 0;
+    return exec_res_from_builtin(0);
 }

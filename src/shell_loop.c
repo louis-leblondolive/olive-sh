@@ -45,6 +45,15 @@ int run_shell(char **envp){
     init_res = set_shell_foreground();
     if(init_res != 0) return init_res;
 
+    // Init job table
+    job_table_t *job_tbl = job_table_init();
+    if(!job_tbl){
+        print_error("SYSTEM ERROR", "failed to initialize environment", "initial variables export failed");
+        free_env(env); free_job(g_foreground_job);
+        return 1;
+    }
+
+
     // ----- MAIN SHELL LOOP -----------------------------------------------------------------------------
     while(1){
 
@@ -115,11 +124,7 @@ int run_shell(char **envp){
         print_debug("Done parsing\n");
 
 
-        // ----- EXECUTION ----------------------------------------------------
-
-        //char *cache_err_time = expand_var(&env, "ERRTIME");
-        int res = -1;
-
+        // ----- EXECUTION ---------------------------------------------------
         int err_pipe[2];
         if(pipe(err_pipe) != 0){
             perror("pipe");
@@ -134,34 +139,58 @@ int run_shell(char **envp){
             continue;
         }
 
-        res = run_ast(&env, parse_res.ast, STDIN_FILENO, STDOUT_FILENO, err_pipe[1]);
+        exec_res_t res = run_ast(&env, job_tbl, parse_res.ast, STDIN_FILENO, STDOUT_FILENO, err_pipe[1]);
 
         close(err_pipe[1]);
 
-        env_export(&env, "?", "%d", res);
+        switch(res.kind){
 
-        if(res != 0){
+            case RES_STOPPED:
+                env_export(&env, "?", "%d", 128 + res.stop_sig);
+                set_shell_foreground();
+                break;
+
+            case RES_SIGNALED:
+                env_export(&env, "?", "%d", 128 + res.term_sig);
+                // custom signal errors here
+                break;
+
+            case RES_EXITED:
+
+                env_export(&env, "?", "%d", res.exit_code);
+
+                if(res.exit_code != 0){
+        
+                    if(cfg_infos.errexit) exit(res.exit_code);
+
+                    // error-causing command 
+                    env_export(&env, "ERRCMD", "%s", line);
+
+                    // error code 
+                    char err_descr[32 + 26];
+                    snprintf(err_descr, sizeof(err_descr), "process exited with code %d", res.exit_code);
+
+                    // errlog
+                    char errlog[MAX_ERROR_LEN];
+                    ssize_t n = read(err_pipe[0], errlog, sizeof(errlog) - 1);
+
+                    if(n < 0) { errlog[0] = '\0'; n = 1; }
+                    else{ errlog[n] = '\0'; }
+
+                    env_export(&env, "ERRLOG", "%s", errlog);
+
+                    print_error("EXECUTION ERROR", err_descr, errlog);
+                }
+                break;
+
             
-            if(cfg_infos.errexit) exit(res);
-
-            // error-causing command 
-            env_export(&env, "ERRCMD", "%s", line);
-
-            // error code 
-            char err_descr[32 + 26];
-            snprintf(err_descr, sizeof(err_descr), "process exited with code %d", res);
-
-            // errlog
-            char errlog[MAX_ERROR_LEN];
-            ssize_t n = read(err_pipe[0], errlog, sizeof(errlog) - 1);
-
-            if(n < 0) { errlog[0] = '\0'; n = 1; }
-            else{ errlog[n] = '\0'; }
-
-            env_export(&env, "ERRLOG", "%s", errlog);
-
-            print_error("EXECUTION ERROR", err_descr, errlog);
+            default:
+                print_error("SYSTEM ERROR", "couldn't determine termination cause", "");
+                env_export(&env, "?", "%d", 2);
+                break;
         }
+
+        
         
         close(err_pipe[0]);
         
