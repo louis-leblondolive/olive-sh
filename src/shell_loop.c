@@ -14,7 +14,7 @@ int run_shell(char **envp){
         perror("sigaction");
         exit(1);
     }
-
+    
     // Init environment 
     env_t env = NULL;
     init_res = env_array_to_chain(envp, &env);
@@ -34,23 +34,28 @@ int run_shell(char **envp){
         return init_res;
     }
 
-    // Init foreground job
-    g_shell_pgid = getpgid(0);
-    if(g_shell_pgid < 0){
-        perror("getpgid");
+    // Init job control 
+    init_res += save_shell_pid();
+    init_res += init_foreground_job();
+    init_res += set_shell_foreground();
+
+    if(init_res != 0){
+        print_error("SYSTEM ERROR", "failed to initialize job control interface", "shell couldn't be assigned as foreground job");
         free_env(env);
-        return 1;
+        free_foreground_job();
+        return init_res;
     }
 
-    init_res = set_shell_foreground();
-    if(init_res != 0) return init_res;
 
     // Init job table
     job_table_t *job_tbl = job_table_init();
-    if(!job_tbl){
-        print_error("SYSTEM ERROR", "failed to initialize environment", "initial variables export failed");
-        free_env(env); free_job(g_foreground_job);
-        return 1;
+    init_res += set_main_job_table(job_tbl);
+
+    if(init_res != 0){
+        print_error("SYSTEM ERROR", "failed to initialize job control interface", "job table initialization failed");
+        free_env(env);
+        free_foreground_job();
+        return init_res;
     }
 
 
@@ -202,7 +207,8 @@ int run_shell(char **envp){
     }
 
     free_env(env);
-    free_job(g_foreground_job);
+    free_foreground_job();
+    free_main_job_table();
 
     return 0;
 }

@@ -186,20 +186,18 @@ exec_res_t run_pipe_children(env_t *env, job_table_t *job_tbl, ast_node_t *ast,
 
     while(!(r_done && l_done)){
                             
-        done_id = waitpid(-g_foreground_job->pgid, &res, WUNTRACED);
+        done_id = waitpid(-group_pgid, &res, WUNTRACED);
         if(done_id < 0){ if(errno == EINTR) continue; else break; }
 
         if(done_id == left_chld){ 
             if(WIFSTOPPED(res)) continue;
             l_status = res; 
             l_done = true; 
-            if(!r_done && ast->right) update_job_cmd(g_foreground_job, ast->right->str_cmd);
         }
         if(done_id == right_chld){ 
             if(WIFSTOPPED(res)) continue;
             r_status = res; 
-            r_done = true; 
-            if(!l_done && ast->left) update_job_cmd(g_foreground_job, ast->left->str_cmd);
+            r_done = true;
         }
     }
 

@@ -27,7 +27,7 @@ exec_res_t exec_res_from_waitpid_status(int status){
 
     else {
         res.kind = RES_EXITED;
-        res.exit_code = status;
+        res.exit_code = WEXITSTATUS(status);
     }
 
     return res;

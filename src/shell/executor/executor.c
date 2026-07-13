@@ -69,7 +69,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
                         setpgid(0, leader_pid);
                         
                         leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
-                        update_foreground_job(leader_job);
+                        set_foreground_job(leader_job);
 
                             // Run pipe node 
                         exec_res_t pipe_res = run_pipe_children(env, job_tbl, ast, leader_pid, 
@@ -90,7 +90,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
 
                             // Init new leader
                         leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
-                        update_foreground_job(leader_job);
+                        set_foreground_job(leader_job);
 
                             // Run pipe node foreground 
                         setpgid(leader_pid, leader_pid);
@@ -101,7 +101,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
 
                             // Clean and exit 
                         if(WIFSTOPPED(exit_status)){
-                            if(suspend_job(job_tbl, g_foreground_job) != 0){
+                            if(suspend_job(job_tbl, leader_job) != 0){
                                 dprintf(std_fd_err, "Error during job suspension\n");
                                 close(err_pipe[0]);
                                 return exec_res_from_builtin(1);
@@ -119,7 +119,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
                 }  
             }
             else { // Intermediate supervisor  
-                pid_t group_pgid = g_foreground_job->pgid;
+                pid_t group_pgid = get_foreground_job()->pgid;
 
                 return run_pipe_children(env, job_tbl, ast, group_pgid, 
                     std_fd_in, std_fd_out, std_fd_err);
@@ -227,7 +227,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
                                 // Init leader job  
                             
                             leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
-                            update_foreground_job(leader_job);
+                            set_foreground_job(leader_job);
 
                                 // Run command
                             exit_status = run_cmd_async(env, argv, envp, fd_in, fd_out, err_pipe[1]);
@@ -241,7 +241,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
 
                                 // Init leader job  
                             leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
-                            update_foreground_job(leader_job);
+                            set_foreground_job(leader_job);
 
                                 // Run command foreground
                             setpgid(leader_pid, leader_pid);
@@ -251,7 +251,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
 
                                 // Clean and exit 
                             if(WIFSTOPPED(exit_status)){
-                                if(suspend_job(job_tbl, g_foreground_job) != 0){
+                                if(suspend_job(job_tbl, leader_job) != 0){
                                     dprintf(std_fd_err, "Error during job suspension\n");
                                     close(err_pipe[0]);
                                     return exec_res_from_builtin(1);
