@@ -15,7 +15,7 @@
 #include "exec_internal.h"
 #include "exec_rules.h"
 
-exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
-     ast_node_t *ast, int std_fd_in, int std_fd_out, int std_fd_err);
+exec_res_t run_ast(env_t *env, ast_node_t *ast, 
+     int std_fd_in, int std_fd_out, int std_fd_err);
 
 #endif

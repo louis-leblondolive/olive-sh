@@ -105,7 +105,7 @@ int run_builtin(int id, int argc, char **argv, env_t *env, int fd_in, int fd_out
 }
 
 
-exec_res_t run_pipe_children(env_t *env, job_table_t *job_tbl, ast_node_t *ast, 
+exec_res_t run_pipe_children(env_t *env, ast_node_t *ast, 
     pid_t group_pgid, 
     int std_fd_in, int std_fd_out, int err_out_fd){
 
@@ -138,7 +138,7 @@ exec_res_t run_pipe_children(env_t *env, job_table_t *job_tbl, ast_node_t *ast,
         close(io_pipe[0]);
         reset_sa_handlers();
 
-        exec_res_t cache_res = run_ast(env, job_tbl, ast->left, std_fd_in, io_pipe[1], left_err_pipe[1]);
+        exec_res_t cache_res = run_ast(env, ast->left, std_fd_in, io_pipe[1], left_err_pipe[1]);
 
         switch (cache_res.kind){
             case RES_EXITED: exit(cache_res.exit_code);
@@ -163,7 +163,7 @@ exec_res_t run_pipe_children(env_t *env, job_table_t *job_tbl, ast_node_t *ast,
         close(io_pipe[1]);
         reset_sa_handlers();
 
-        exec_res_t cache_res = run_ast(env, job_tbl, ast->right, io_pipe[0], std_fd_out, right_err_pipe[1]);
+        exec_res_t cache_res = run_ast(env, ast->right, io_pipe[0], std_fd_out, right_err_pipe[1]);
 
         switch (cache_res.kind){
             case RES_EXITED: exit(cache_res.exit_code);

@@ -61,7 +61,7 @@ int set_main_job_table(job_table_t *job_tbl){
     return 0;
 }
 
-job_table_t *get_job_table(void){
+job_table_t *get_main_job_table(void){
     return g_job_table;
 }
 
@@ -95,10 +95,12 @@ int set_shell_foreground(void){
 }
 
 
-int suspend_job(job_table_t *job_tbl, job_t *job){
+int suspend_job(job_t *job){
 
     job->status = SUSPENDED;
-    if(job_table_add(job_tbl, job) <= 0) return 1;
+    if(main_job_table_add(job) <= 0) return 1;
+
+    g_foreground_job = NULL;
 
     printf("\nolive-sh: suspended %s\n", job->job_cmd);
     

@@ -144,7 +144,7 @@ int run_shell(char **envp){
             continue;
         }
 
-        exec_res_t res = run_ast(&env, job_tbl, parse_res.ast, STDIN_FILENO, STDOUT_FILENO, err_pipe[1]);
+        exec_res_t res = run_ast(&env, parse_res.ast, STDIN_FILENO, STDOUT_FILENO, err_pipe[1]);
 
         close(err_pipe[1]);
 

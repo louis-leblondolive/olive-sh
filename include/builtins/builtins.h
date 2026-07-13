@@ -20,5 +20,6 @@ int builtin_cd(int argc, char **argv, env_t *env);
 int builtin_exit(int argc, char **argv, env_t *env);
 int builtin_errlog(int argc, char **argv, env_t *env);
 int builtin_olvsh(int argc, char **argv, env_t *env);
+int builtin_jobs(int argc, char **argv, env_t *env);
 
 #endif

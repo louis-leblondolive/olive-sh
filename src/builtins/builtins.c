@@ -11,5 +11,6 @@ builtin_t builtins[] = {
     {"exit", builtin_exit},
     {"errlog", builtin_errlog},
     {"olvsh", builtin_olvsh},
+    {"jobs", builtin_jobs},
     {NULL, NULL}
-} ;
+};

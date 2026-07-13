@@ -27,6 +27,6 @@ void free_main_job_table(void);
 
 // Job control operations 
 int set_shell_foreground(void);
-int suspend_job(job_table_t *job_tbl, job_t *job);
+int suspend_job(job_t *job);
 
 #endif

@@ -2,8 +2,8 @@
 #include "exec_internal.h"
 
 
-exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
-     ast_node_t *ast, int std_fd_in, int std_fd_out, int std_fd_err){
+exec_res_t run_ast(env_t *env, ast_node_t *ast, 
+    int std_fd_in, int std_fd_out, int std_fd_err){
 
     if(!ast) return exec_res_from_builtin(0);
 
@@ -13,26 +13,26 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
         // --- OPERATORS --------------------------------------------------
 
         case TOKEN_SEQ:
-            run_ast(env, job_tbl, ast->left, std_fd_in, std_fd_out, std_fd_err);
-            return run_ast(env, job_tbl, ast->right, std_fd_in, std_fd_out, std_fd_err);
+            run_ast(env, ast->left, std_fd_in, std_fd_out, std_fd_err);
+            return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
 
 
         case TOKEN_AND:
-            cache_res = run_ast(env, job_tbl, ast->left, std_fd_in, std_fd_out, std_fd_err);
+            cache_res = run_ast(env, ast->left, std_fd_in, std_fd_out, std_fd_err);
 
             if(cache_res.kind != RES_EXITED || cache_res.exit_code != 0) 
                 return cache_res;
 
-            return run_ast(env, job_tbl, ast->right, std_fd_in, std_fd_out, std_fd_err);
+            return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
 
 
         case TOKEN_OR:
-            cache_res = run_ast(env, job_tbl, ast->left, std_fd_in, std_fd_out, std_fd_err);
+            cache_res = run_ast(env, ast->left, std_fd_in, std_fd_out, std_fd_err);
 
             if(cache_res.kind == RES_EXITED && cache_res.exit_code == 0) 
                 return cache_res;
 
-            return run_ast(env, job_tbl, ast->right, std_fd_in, std_fd_out, std_fd_err);
+            return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
 
         // --- PIPELINE ----------------------------------------------------
 
@@ -72,7 +72,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
                         set_foreground_job(leader_job);
 
                             // Run pipe node 
-                        exec_res_t pipe_res = run_pipe_children(env, job_tbl, ast, leader_pid, 
+                        exec_res_t pipe_res = run_pipe_children(env, ast, leader_pid, 
                             std_fd_in, std_fd_out, err_pipe[1]);
                         
                         close_pipe(err_pipe);
@@ -101,7 +101,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
 
                             // Clean and exit 
                         if(WIFSTOPPED(exit_status)){
-                            if(suspend_job(job_tbl, leader_job) != 0){
+                            if(suspend_job(leader_job) != 0){
                                 dprintf(std_fd_err, "Error during job suspension\n");
                                 close(err_pipe[0]);
                                 return exec_res_from_builtin(1);
@@ -121,7 +121,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
             else { // Intermediate supervisor  
                 pid_t group_pgid = get_foreground_job()->pgid;
 
-                return run_pipe_children(env, job_tbl, ast, group_pgid, 
+                return run_pipe_children(env, ast, group_pgid, 
                     std_fd_in, std_fd_out, std_fd_err);
             }
         }
@@ -251,7 +251,7 @@ exec_res_t run_ast(env_t *env, job_table_t *job_tbl,
 
                                 // Clean and exit 
                             if(WIFSTOPPED(exit_status)){
-                                if(suspend_job(job_tbl, leader_job) != 0){
+                                if(suspend_job(leader_job) != 0){
                                     dprintf(std_fd_err, "Error during job suspension\n");
                                     close(err_pipe[0]);
                                     return exec_res_from_builtin(1);
