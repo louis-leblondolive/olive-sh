@@ -178,14 +178,12 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
 
             int builtin_id = is_builtin(cmd_name);
             if(builtin_id >= 0){  // -------------- Run builtin command 
-                int exit_status = run_builtin(builtin_id, argc, argv, env, fd_in, fd_out);
+                exec_res = run_builtin(builtin_id, argc, argv, env, fd_in, fd_out);
 
-                if(exit_status != 0){
+                if(exec_res.kind == RES_EXITED && exec_res.exit_code != 0){
                     char *errlog = expand_var(env, "ERRLOG");
                     write(std_fd_err, errlog, strlen(errlog));
                 }
-
-                exec_res = exec_res_from_builtin(exit_status);
             }
             
             else { // ----------------------------- Run external command 

@@ -1,6 +1,8 @@
 #ifndef EXEC_RESULT
 #define EXEC_RESULT
 
+#include <sys/wait.h>
+
 typedef enum {
      RES_EXITED,
      RES_SIGNALED, 
@@ -15,5 +17,8 @@ typedef struct exec_res_s {
           int stop_sig;
      };
 } exec_res_t;
+
+exec_res_t exec_res_from_builtin(int exit_code);
+exec_res_t exec_res_from_waitpid_status(int status);
 
 #endif

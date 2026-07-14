@@ -5,7 +5,7 @@
 #include "env.h"
 
 
-int builtin_pwd(int argc, char **argv, env_t *env){
+exec_res_t builtin_pwd(int argc, char **argv, env_t *env){
 
     (void)argc;
     (void)argv;
@@ -15,5 +15,5 @@ int builtin_pwd(int argc, char **argv, env_t *env){
     printf("%s\n", cwd);
     free(cwd);
 
-    return 0;   
+    return exec_res_from_builtin(0);   
 }

@@ -4,18 +4,18 @@
 #include "job_ctl.h"
 
 
-int builtin_bg(int argc, char **argv, env_t *env){
+exec_res_t builtin_bg(int argc, char **argv, env_t *env){
     (void)env;
 
     if(argc <= 1){
         env_export(env, "ERRLOG", "bg: no arguments provided. Usage: bg %%job_id");
-        return 1;
+        return exec_res_from_builtin(1);
     }
 
     int job_id = -1;
     if(sscanf(argv[1], "%%%d", &job_id) != 1){
         env_export(env, "ERRLOG", "bg: incorrect arguments. Usage: bg %%job_id");
-        return 2;
+        return exec_res_from_builtin(2);
     }
 
     job_table_t *job_tbl = get_main_job_table();
@@ -23,19 +23,19 @@ int builtin_bg(int argc, char **argv, env_t *env){
         || !job_tbl->tbl[job_id]){
 
         env_export(env, "ERRLOG", "bg: invalid job id [%d]", job_id);
-        return 1;
+        return exec_res_from_builtin(1);
     }
 
     job_t *job = job_tbl->tbl[job_id];
 
     if(job->status != SUSPENDED){
         env_export(env, "ERRLOG", "bg: job [%d] already in background", job_id);
-        return 1;
+        return exec_res_from_builtin(1);
     }
 
-    if(killpg(job->pgid, SIGCONT) != 0) return 2;
+    if(killpg(job->pgid, SIGCONT) != 0) return exec_res_from_builtin(2);
 
     job->status = RUNNING;
     
-    return 0;
+    return exec_res_from_builtin(0);
 }

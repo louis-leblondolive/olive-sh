@@ -5,9 +5,9 @@
 #include "env.h"
 
 
-int builtin_echo(int argc, char **argv, env_t *env){
+exec_res_t builtin_echo(int argc, char **argv, env_t *env){
 
-    if(!argv) return 1;
+    if(!argv) return exec_res_from_builtin(1);
     (void) env; // silences unused errors
 
     bool option_n = argc >= 2 && strcmp(argv[1], "-n") == 0;
@@ -22,5 +22,5 @@ int builtin_echo(int argc, char **argv, env_t *env){
     
     if(!option_n) printf("\n");
 
-    return 0;
+    return exec_res_from_builtin(0);
 }

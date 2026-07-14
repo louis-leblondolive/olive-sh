@@ -16,7 +16,7 @@
 #include "exec_result.h"
 #include "exec_rules.h"
 
-int run_builtin(int id, int argc, char **argv, env_t *env, 
+exec_res_t run_builtin(int id, int argc, char **argv, env_t *env, 
     int fd_in, int fd_out);
 
 // must be ran from child process

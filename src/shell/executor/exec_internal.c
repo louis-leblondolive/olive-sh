@@ -2,6 +2,39 @@
 #include "executor.h"
 
 
+exec_res_t run_builtin(int id, int argc, char **argv, env_t *env, int fd_in, int fd_out){
+    
+    print_debug("Running command\n");
+    
+    // Setup I/O
+    int save_in = -1;
+    int save_out = -1;
+    if(fd_in != STDIN_FILENO){
+        save_in = dup(STDIN_FILENO);
+        dup2(fd_in, STDIN_FILENO);
+        close(fd_in);
+    }
+    if(fd_out != STDOUT_FILENO){
+        save_out = dup(STDOUT_FILENO);
+        dup2(fd_out, STDOUT_FILENO);
+        close(fd_out);
+    }
+    
+    // Run 
+    exec_res_t res = builtins[id].func(argc, argv, env);
+
+    // Clean 
+    if(save_in != -1){
+        dup2(save_in, STDIN_FILENO); close(save_in);
+    }
+    if(save_out != -1){
+        dup2(save_out, STDOUT_FILENO); close(save_out);
+    } 
+
+    return res;
+}
+
+
 int run_cmd_async(env_t *env, char **argv, char **envp, int fd_in, int fd_out, int fd_err){
 
     print_debug("Running command asynchronously\n");
@@ -69,39 +102,6 @@ int run_cmd_async(env_t *env, char **argv, char **envp, int fd_in, int fd_out, i
     dprintf(STDERR_FILENO, "olive-sh: %s: %s\n", cmd_name, strerror(errno));
     if(errno == ENOENT) return 127;
     else return 126;
-}
-
-
-int run_builtin(int id, int argc, char **argv, env_t *env, int fd_in, int fd_out){
-    
-    print_debug("Running command\n");
-    
-    // Setup I/O
-    int save_in = -1;
-    int save_out = -1;
-    if(fd_in != STDIN_FILENO){
-        save_in = dup(STDIN_FILENO);
-        dup2(fd_in, STDIN_FILENO);
-        close(fd_in);
-    }
-    if(fd_out != STDOUT_FILENO){
-        save_out = dup(STDOUT_FILENO);
-        dup2(fd_out, STDOUT_FILENO);
-        close(fd_out);
-    }
-    
-    // Run 
-    int res = builtins[id].func(argc, argv, env);
-
-    // Clean 
-    if(save_in != -1){
-        dup2(save_in, STDIN_FILENO); close(save_in);
-    }
-    if(save_out != -1){
-        dup2(save_out, STDOUT_FILENO); close(save_out);
-    } 
-
-    return res;
 }
 
 

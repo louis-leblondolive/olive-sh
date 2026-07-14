@@ -4,9 +4,9 @@
 #include "env.h"
 
 
-int builtin_olvsh(int argc, char **argv, env_t *env){
+exec_res_t builtin_olvsh(int argc, char **argv, env_t *env){
 
-    if(argc <= 1) return 0;
+    if(argc <= 1) return exec_res_from_builtin(0);
 
     for (int i = 1; i < argc; i++){
 
@@ -30,10 +30,10 @@ int builtin_olvsh(int argc, char **argv, env_t *env){
 
             else {
                 env_export(env, "ERRLOG", "olive-sh: no such option : --%s", opt);
-                return 1;
+                return exec_res_from_builtin(1);
             }
         }
     }
 
-    return 0;
+    return exec_res_from_builtin(0);
 }

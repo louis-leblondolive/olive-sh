@@ -4,8 +4,8 @@
 #include "env.h"
 
 
-int builtin_env(int argc, char **argv, env_t *env){
-    if(!env) return 1;
+exec_res_t builtin_env(int argc, char **argv, env_t *env){
+    if(!env) return exec_res_from_builtin(1);
 
     (void)argc;
     (void)argv; // silences unused warning
@@ -16,5 +16,5 @@ int builtin_env(int argc, char **argv, env_t *env){
         cur_var = cur_var->next;
     }
     
-    return 0;
+    return exec_res_from_builtin(0);
 }

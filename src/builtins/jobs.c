@@ -3,7 +3,7 @@
 #include "job_ctl.h"
 #include "printer.h"
 
-int builtin_jobs(int argc, char **argv, env_t *env){
+exec_res_t builtin_jobs(int argc, char **argv, env_t *env){
 
     (void)argc; 
     (void)argv; 
@@ -40,5 +40,5 @@ int builtin_jobs(int argc, char **argv, env_t *env){
         }   
     }
 
-    return 0;
+    return exec_res_from_builtin(0);
 }

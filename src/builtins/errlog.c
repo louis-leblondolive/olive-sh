@@ -5,8 +5,8 @@
 #include "printer.h"
 
 
-int builtin_errlog(int argc, char **argv, env_t *env){
-    if(!env) return 1;
+exec_res_t builtin_errlog(int argc, char **argv, env_t *env){
+    if(!env) return exec_res_from_builtin(1);
 
     (void) argc;
     (void) argv;
@@ -17,7 +17,7 @@ int builtin_errlog(int argc, char **argv, env_t *env){
 
     if(!log || !time || !cmd){
         env_export(env, "ERRLOG", "errlog: an error occured loading environment error variables");
-        return 1;
+        return exec_res_from_builtin(1);
     }
     else{
         print_debug("errlog: loaded environment variables\n");
@@ -36,5 +36,5 @@ int builtin_errlog(int argc, char **argv, env_t *env){
     
     print_hint("Details can be shown automatically. To do so, run olvsh --errlog\n");
     
-    return 0;
+    return exec_res_from_builtin(0);
 }

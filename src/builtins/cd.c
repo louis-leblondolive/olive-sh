@@ -5,10 +5,10 @@
 #include <errno.h>
 #include "env.h"
 
-int builtin_cd(int argc, char **argv, env_t *env){
+exec_res_t builtin_cd(int argc, char **argv, env_t *env){
 
-    if(!env || !argv) return 1; 
-    if(argc < 2) return 0;
+    if(!env || !argv) return exec_res_from_builtin(1); 
+    if(argc < 2) return exec_res_from_builtin(0);
 
     char *path = argv[1];
     
@@ -23,8 +23,8 @@ int builtin_cd(int argc, char **argv, env_t *env){
         }
         else env_export(env, "ERRLOG", "cd: internal error");
 
-        return 1;
+        return exec_res_from_builtin(1);
     }
 
-    return 0;
+    return exec_res_from_builtin(0);
 }

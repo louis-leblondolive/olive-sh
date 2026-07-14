@@ -4,7 +4,7 @@
 #include <errno.h>
 #include "env.h"
 
-int builtin_exit(int argc, char **argv, env_t *env){
+exec_res_t builtin_exit(int argc, char **argv, env_t *env){
     
     if(argc >= 2){
         char *end_ptr;
@@ -30,5 +30,5 @@ int builtin_exit(int argc, char **argv, env_t *env){
         exit(exit_code);
     }   
 
-    return 0;
+    return exec_res_from_builtin(0);
 }
