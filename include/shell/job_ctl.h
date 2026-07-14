@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 #include <unistd.h>
+#include <string.h>
+#include <readline/readline.h>
 
 #include "job_table.h"
 #include "printer.h"
@@ -28,5 +30,9 @@ void free_main_job_table(void);
 // Job control operations 
 int set_shell_foreground(void);
 int suspend_job(job_t *job);
+bool check_done_jobs(void);
+int check_done_jobs_readline_hook(void);
+
+
 
 #endif

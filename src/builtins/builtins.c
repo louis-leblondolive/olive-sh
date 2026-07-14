@@ -12,5 +12,6 @@ builtin_t builtins[] = {
     {"errlog", builtin_errlog},
     {"olvsh", builtin_olvsh},
     {"jobs", builtin_jobs},
+    {"bg", builtin_bg},
     {NULL, NULL}
 };

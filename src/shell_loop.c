@@ -9,6 +9,9 @@ int run_shell(char **envp){
     // ----- SHELL INIT -----------------------------------------------------------------------------
     int init_res = 0;
 
+    // Init readline hook
+    rl_event_hook = check_done_jobs_readline_hook;
+
     // Init signal handlers
     if(init_shell_sa_handlers() != 0){
         perror("sigaction");
@@ -61,6 +64,8 @@ int run_shell(char **envp){
 
     // ----- MAIN SHELL LOOP -----------------------------------------------------------------------------
     while(1){
+
+        check_done_jobs();
 
         if(sigsetjmp(jump_buffer, 1) != 0){
             if(lex_res.tk_chain) free_token_chain(lex_res.tk_chain);
@@ -205,25 +210,8 @@ int run_shell(char **envp){
 
         // ----- CLEAN --------------------------------------------------
 
-        // Free allocated data 
         free_token_chain(lex_res.tk_chain);
         free_ast(parse_res.ast);
-
-        // Remove done jobs 
-        size_t i = 1;
-        while(i < job_tbl->capacity){
-
-            if(job_tbl->tbl[i] && job_tbl->tbl[i]->status == DONE){
-                size_t old_capacity = job_tbl->capacity;
-
-                main_job_table_rm(i);
-
-                if(job_tbl->capacity != old_capacity) i = 1;
-                else i ++;
-            }
-
-            else i ++;
-        }
     }
 
     // Clean before exit 

@@ -28,6 +28,10 @@ int builtin_jobs(int argc, char **argv, env_t *env){
                     printf(BOLD_GREEN); printf("RUNNING  ");
                     break;
 
+                case DONE:
+                    printf(BOLD_GREEN); printf("DONE     ");
+                    break;
+
                 default: break;
             }
             printf(RESET);

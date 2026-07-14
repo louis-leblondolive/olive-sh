@@ -106,3 +106,51 @@ int suspend_job(job_t *job){
     
     return 0;
 }
+
+
+bool check_done_jobs(void){
+
+    bool job_removed = false;
+
+    size_t i = 1;
+    while(i < g_job_table->capacity){
+
+        if(g_job_table->tbl[i] && g_job_table->tbl[i]->status == DONE){
+
+            printf("[%zu] - ", i);
+            printf(BOLD_GREEN); printf("DONE     "); printf(RESET);
+            printf("%s\n", g_job_table->tbl[i]->job_cmd);
+
+            size_t old_capacity = g_job_table->capacity;
+
+            main_job_table_rm(i);
+            job_removed = true;
+            
+            if(g_job_table->capacity != old_capacity) i = 1;
+            else i ++;
+        }
+
+        else i ++;
+    }
+
+    return job_removed;
+}
+
+
+int check_done_jobs_readline_hook(void){
+
+    if (rl_line_buffer != NULL && rl_line_buffer[0] != '\0'){
+        return 0; 
+    }
+
+    if(!g_job_table || !g_job_table->tbl) return 0;
+
+    bool job_notified = check_done_jobs();
+
+    if(job_notified){
+        rl_on_new_line();
+        rl_redisplay();
+    }
+
+    return 0;
+}

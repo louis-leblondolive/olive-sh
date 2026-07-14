@@ -20,11 +20,12 @@ void sig_chld_handler(int s){
     job_table_t *job_tbl = get_main_job_table();
 
     pid_t done_id = -1;
-    while((done_id = waitpid(-1, NULL, WNOHANG))){
+    while((done_id = waitpid(-1, NULL, WNOHANG)) > 0){
         
         if(!job_tbl || !job_tbl->tbl) continue;
         for (size_t i = 1; i < job_tbl->capacity; i++){
-            if(job_tbl->tbl[i]->leader_pid == done_id) job_tbl->tbl[i]->status = DONE;
+            if(job_tbl->tbl[i]
+            && job_tbl->tbl[i]->leader_pid == done_id) job_tbl->tbl[i]->status = DONE;
         }
     }
 }
