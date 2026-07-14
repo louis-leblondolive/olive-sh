@@ -13,5 +13,6 @@ builtin_t builtins[] = {
     {"olvsh", builtin_olvsh},
     {"jobs", builtin_jobs},
     {"bg", builtin_bg},
+    {"fg", builtin_fg},
     {NULL, NULL}
 };

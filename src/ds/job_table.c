@@ -24,6 +24,7 @@ void free_job(job_t *job){
     if(!job) return;
 
     if(job->job_cmd) free(job->job_cmd);
+    if(job->leader_std_err_fd > 2) close(job->leader_std_err_fd);
     free(job);
 }
 

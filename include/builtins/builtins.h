@@ -23,5 +23,6 @@ exec_res_t builtin_errlog(int argc, char **argv, env_t *env);
 exec_res_t builtin_olvsh(int argc, char **argv, env_t *env);
 exec_res_t builtin_jobs(int argc, char **argv, env_t *env);
 exec_res_t builtin_bg(int argc, char **argv, env_t *env);
+exec_res_t builtin_fg(int argc, char **argv, env_t *env);
 
 #endif
