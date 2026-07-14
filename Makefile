@@ -1,7 +1,8 @@
 # --- Compiler Configuration ---
 CC      = gcc
-CFLAGS  = -Wall -Wextra -Werror -g -std=c11
-LDFLAGS = -lreadline
+READLINE_DIR = /opt/homebrew/opt/readline
+CFLAGS  = -Wall -Wextra -Werror -g -std=c11 -I$(READLINE_DIR)/include
+LDFLAGS = -L$(READLINE_DIR)/lib -lreadline
 
 # --- Directories ---
 SRC_DIR     = src
