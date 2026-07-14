@@ -19,7 +19,8 @@
  */
 typedef enum job_status {
     RUNNING,
-    SUSPENDED
+    SUSPENDED,
+    DONE
 } job_status_e;
 
 /**

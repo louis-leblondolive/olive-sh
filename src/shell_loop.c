@@ -144,9 +144,12 @@ int run_shell(char **envp){
             continue;
         }
 
+        sigset_t sigchld_mask = block_sigchld();
+
         exec_res_t res = run_ast(&env, parse_res.ast, STDIN_FILENO, STDOUT_FILENO, err_pipe[1]);
 
         close(err_pipe[1]);
+        restore_sigmask(sigchld_mask);
 
         switch(res.kind){
 
@@ -157,7 +160,6 @@ int run_shell(char **envp){
 
             case RES_SIGNALED:
                 env_export(&env, "?", "%d", 128 + res.term_sig);
-                // custom signal errors here
                 break;
 
             case RES_EXITED:
@@ -202,10 +204,29 @@ int run_shell(char **envp){
         print_debug("Done execution\n");
 
         // ----- CLEAN --------------------------------------------------
+
+        // Free allocated data 
         free_token_chain(lex_res.tk_chain);
         free_ast(parse_res.ast);
+
+        // Remove done jobs 
+        size_t i = 1;
+        while(i < job_tbl->capacity){
+
+            if(job_tbl->tbl[i] && job_tbl->tbl[i]->status == DONE){
+                size_t old_capacity = job_tbl->capacity;
+
+                main_job_table_rm(i);
+
+                if(job_tbl->capacity != old_capacity) i = 1;
+                else i ++;
+            }
+
+            else i ++;
+        }
     }
 
+    // Clean before exit 
     free_env(env);
     free_foreground_job();
     free_main_job_table();
