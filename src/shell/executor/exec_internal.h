@@ -27,6 +27,11 @@ exec_res_t run_pipe_children(env_t *env, ast_node_t *ast,
     pid_t group_pgid, 
     int std_fd_in, int std_fd_out, int err_out_fd);
 
+
+exec_res_t run_ast_background(env_t *env, ast_node_t *ast, 
+    int std_fd_in, int std_fd_out);
+
+
 int setup_redirs(env_t *env, ast_node_t *cmd_node, int *fd_in, int *fd_out);
 int setup_params(env_t *env, ast_node_t *cmd_node, int *argc, char ***argv, char ***envp);
 void relay_child_error(int err_pipe_fd, int target_fd);

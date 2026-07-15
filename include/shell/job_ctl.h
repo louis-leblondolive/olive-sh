@@ -1,6 +1,7 @@
 #ifndef JOB_CTL 
 #define JOB_CTL 
 
+#include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>

@@ -13,8 +13,10 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
         // --- OPERATORS --------------------------------------------------
 
         case TOKEN_SEQ:
-            run_ast(env, ast->left, std_fd_in, std_fd_out, std_fd_err);
-            return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
+            cache_res = run_ast(env, ast->left, std_fd_in, std_fd_out, std_fd_err);
+
+            if(ast->right) return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
+            else return cache_res;
 
 
         case TOKEN_AND:
@@ -46,8 +48,7 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
             if(is_leader){
 
                 int err_pipe[2];
-                if(pipe(err_pipe) != 0){
-                    perror("pipe");
+                if(open_cloexec_pipe(err_pipe) != 0){
                     return exec_res_from_builtin(1);
                 }
 
@@ -129,8 +130,27 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
         // --- BACKGROUND ---------------------------------------------------
 
         case TOKEN_AMP: 
-            print_error("EXECUTION ERROR", "'&' operator not yet implemented", "");
-            return exec_res_from_builtin(1);
+            
+            if(ast->left && is_delim(ast->left->token)){
+
+                ast_node_t *cache_LR = ast->left->right;
+                ast->left->right = NULL;
+
+                cache_res = run_ast(env, ast->left, std_fd_in, std_fd_out, std_fd_err);
+                run_ast_background(env, cache_LR, std_fd_in, std_fd_out);
+
+                free_ast(cache_LR);
+
+                if(ast->right) return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
+                else return cache_res;
+            }
+
+            else {
+                run_ast_background(env, ast->left, std_fd_in, std_fd_out);
+                return run_ast(env, ast->right, std_fd_in, std_fd_out, std_fd_err);
+            }
+
+            return exec_res_from_builtin(1); // unreachable
 
         // --- SIMPLE COMMAND ------------------------------------------------
 
@@ -193,8 +213,7 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
                 if(is_leader){
 
                     int err_pipe[2];
-                    if(pipe(err_pipe) != 0){
-                        perror("pipe");
+                    if(open_cloexec_pipe(err_pipe) != 0){
                         clean_exec_vars(argv, envp);
                         clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
                         return exec_res_from_builtin(1);

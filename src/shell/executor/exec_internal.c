@@ -220,6 +220,77 @@ exec_res_t run_pipe_children(env_t *env, ast_node_t *ast,
 }
 
 
+exec_res_t run_ast_background(env_t *env, ast_node_t *ast, 
+    int std_fd_in, int std_fd_out){
+
+        
+    int err_pipe[2];
+    if(open_cloexec_pipe(err_pipe) != 0){
+        return exec_res_from_builtin(1);
+    }
+
+    pid_t leader_pid = fork();
+    if(leader_pid == -1){
+        perror("fork");
+        close_pipe(err_pipe);
+        return exec_res_from_builtin(1);
+    }
+
+    bool is_child = (leader_pid == 0);
+    
+    // Init leader job 
+    if(is_child) leader_pid = getpid();
+    char *cmd = strdup(ast->str_cmd);
+
+    job_t *leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
+    if(!leader_job){
+        close_pipe(err_pipe);
+        return exec_res_from_builtin(1);
+    }
+
+    setpgid(leader_pid, leader_pid);
+
+    // Run ast background 
+    if(is_child){
+
+        if(reset_sa_handlers() != 0){
+            perror("signal");
+            close_pipe(err_pipe);
+            exit(1);
+        }
+
+        set_foreground_job(leader_job);
+        // Local modification of the main job 
+        // Even though this job isn't foreground, sub-processes created when 
+        //  running run_ast will believe it and inherit its pgid 
+        
+        exec_res_t res = run_ast(env, ast, std_fd_in, std_fd_out, err_pipe[1]);
+        
+        close_pipe(err_pipe); 
+
+        switch(res.kind){
+            case RES_EXITED: exit(res.exit_code);
+            case RES_STOPPED: exit(res.stop_sig);
+            case RES_SIGNALED: exit(res.term_sig);
+            default: exit(1);
+        }
+    }
+    
+    // Parent
+    close(err_pipe[1]);
+
+    if(main_job_table_add(leader_job) <= 0){
+        killpg(leader_pid, SIGKILL);
+        free_job(leader_job);
+        return exec_res_from_builtin(1);
+    }
+
+    printf("[%d] - %d\n", leader_job->job_id, leader_job->leader_pid);
+
+    return exec_res_from_builtin(0);
+}
+
+
 int setup_redirs(env_t *env, ast_node_t *cmd_node, int *fd_in, int *fd_out){
 
     for(redir_t *red = cmd_node->redirs->first; red != NULL; red = red->next){

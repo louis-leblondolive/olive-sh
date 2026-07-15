@@ -118,7 +118,7 @@ bool check_done_jobs(void){
         if(g_job_table->tbl[i] && g_job_table->tbl[i]->status == DONE){
 
             printf("[%zu] - ", i);
-            printf(BOLD_GREEN); printf("DONE     "); printf(RESET);
+            printf(BOLD_GREEN); printf("DONE        "); printf(RESET);
             printf("%s\n", g_job_table->tbl[i]->job_cmd);
 
             size_t old_capacity = g_job_table->capacity;

@@ -75,7 +75,7 @@ exec_res_t builtin_fg(int argc, char **argv, env_t *env){
         if(n < 0) { errlog[0] = '\0'; n = 1; }
         else { errlog[n] = '\0'; }
 
-        write(STDERR_FILENO, errlog, (size_t)n);
+        env_export(env, "ERRLOG", "%s", errlog);
     }
     close(leader_job->leader_std_err_fd);
 

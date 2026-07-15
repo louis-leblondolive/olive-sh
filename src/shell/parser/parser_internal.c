@@ -350,8 +350,7 @@ ast_node_t *build_delim_node(ast_node_t *cur_ast, token_chain_t *tk_chain, parse
         return NULL;
     }
 
-    if(tk_chain->first != NULL 
-        && (tk_chain->first->token == TOKEN_SEQ || tk_chain->first->token == TOKEN_AMP)){
+    if(tk_chain->first != NULL && is_delim(tk_chain->first->token)){
 
         print_debug("Building delim node\n");
 

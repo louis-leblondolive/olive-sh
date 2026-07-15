@@ -118,6 +118,11 @@ char *segment_chain_to_str(segment_t *chain);
 char *token_to_str(token_e token);
 
 /**
+ * @brief Tests if a token is ; or &
+ */
+bool is_delim(token_e token);
+
+/**
  * @brief Initialises a token chain.
  * @return A pointer to an empty token chain (with first and last node set to NULL), 
  * or NULL on failure.

@@ -17,10 +17,6 @@
  */
 
 
-exec_res_t exec_res_from_builtin(int exit_code);
-exec_res_t exec_res_from_waitpid_status(int status);
-
-
 /**
  * @brief Determines whether a command is builtin or not. 
  * @return If the command is builtin, returns its index in the builtin list. Otherwise, returns -1. 

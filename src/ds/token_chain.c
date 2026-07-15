@@ -177,18 +177,24 @@ char *segment_chain_to_str(segment_t *chain){
 char *token_to_str(token_e token){
     switch(token){
         case TOKEN_WORD: return "Word"; 
-        case TOKEN_PIPE: return "'|'";     
-        case TOKEN_REDIR_IN: return "'<'";
-        case TOKEN_REDIR_OUT: return "'>'";
-        case TOKEN_HEREDOC: return "'<<'";   
-        case TOKEN_APPEND: return "'>>'";    
-        case TOKEN_AND: return "'&&'";   
-        case TOKEN_OR:  return "'||'";     
-        case TOKEN_SEQ: return "';'";
-        case TOKEN_AMP: return "'&'";
+        case TOKEN_PIPE: return "|";     
+        case TOKEN_REDIR_IN: return "<";
+        case TOKEN_REDIR_OUT: return ">";
+        case TOKEN_HEREDOC: return "<<";   
+        case TOKEN_APPEND: return ">>";    
+        case TOKEN_AND: return "&&";   
+        case TOKEN_OR:  return "||";     
+        case TOKEN_SEQ: return ";";
+        case TOKEN_AMP: return "&";
         default: return "";
     }
 }
+
+
+bool is_delim(token_e token){
+    return token == TOKEN_SEQ || token == TOKEN_AMP;
+}
+
 
 static token_node_t *init_token_node(void){
     token_node_t *res = (token_node_t*)malloc(sizeof(token_node_t));
