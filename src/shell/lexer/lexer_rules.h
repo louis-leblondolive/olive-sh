@@ -8,6 +8,11 @@
 #include "token_chain.h"
 
 /**
+ * @file lexer_rules.h
+ * @brief Character classification and operator token mapping used in the lexer FSM. 
+ */
+
+/**
  * @brief Determines if a character c is an operator.
  */
 bool is_operator(char c);

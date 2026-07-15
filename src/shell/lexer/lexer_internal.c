@@ -1,29 +1,6 @@
 #include "lexer_internal.h"
 
 
-void set_lex_res_error(lexer_res_t *lex_res, char *fmt, ...){
-    if(!lex_res || !fmt) return;
-
-    if(lex_res->error) free(lex_res->error);
-
-    va_list args;
-    va_start(args, fmt);
-    vasprintf(&(lex_res->error), fmt, args);
-    va_end(args);
-}
-
-
-void set_lex_res_error_info(lexer_res_t *lex_res, char *fmt, ...){
-    if(!lex_res || !fmt) return;
-
-    if(lex_res->error_info) free(lex_res->error_info);
-
-    va_list args;
-    va_start(args, fmt);
-    vasprintf(&(lex_res->error_info), fmt, args);
-    va_end(args);
-}
-
 
 lex_exit_status_e handle_dollar(lexer_res_t *lex_res, token_node_t *cur_node, char cur_char, 
     size_t *cursor, size_t *pos, lexer_state_e *cur_state, bool in_dq){
@@ -245,4 +222,28 @@ lex_exit_status_e flush_current_token(lexer_res_t *lex_res, lexer_state_e cur_st
     }
 
     return LEX_OK;
+}
+
+
+void set_lex_res_error(lexer_res_t *lex_res, char *fmt, ...){
+    if(!lex_res || !fmt) return;
+
+    if(lex_res->error) free(lex_res->error);
+
+    va_list args;
+    va_start(args, fmt);
+    vasprintf(&(lex_res->error), fmt, args);
+    va_end(args);
+}
+
+
+void set_lex_res_error_info(lexer_res_t *lex_res, char *fmt, ...){
+    if(!lex_res || !fmt) return;
+
+    if(lex_res->error_info) free(lex_res->error_info);
+
+    va_list args;
+    va_start(args, fmt);
+    vasprintf(&(lex_res->error_info), fmt, args);
+    va_end(args);
 }

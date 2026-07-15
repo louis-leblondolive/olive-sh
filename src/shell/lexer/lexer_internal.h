@@ -6,13 +6,16 @@
 #include "lexer_rules.h"
 #include "token_chain.h"
 
-void set_lex_res_error(lexer_res_t *lex_res, char *fmt, ...);
-void set_lex_res_error_info(lexer_res_t *lex_res, char *fmt, ...);
-void preset_lex_res(lexer_res_t *lex_res, lex_exit_status_e lex_status);
+/**
+ * @file lexer_internal.h
+ * @brief Internal operations used by the lexer in complex cases. 
+ */
+
 
 /**
  * @brief Handles the dollar lexing case.
  * 
+ * @param lex_res     A pointer to the lexer result struct being built.
  * @param cur_node    A pointer to the token node being completed.
  * @param cur_char    Current read character.
  * @param cursor      A pointer to the reading cursor.
@@ -29,6 +32,7 @@ lex_exit_status_e handle_dollar(lexer_res_t *lex_res, token_node_t *cur_node, ch
 /**
  * @brief Handles the braces lexing case.
  * 
+ * @param lex_res     A pointer to the lexer result struct being built.
  * @param cur_node    A pointer to the token node being completed.
  * @param cur_char    Current read character.
  * @param raw_input   User's input.
@@ -46,7 +50,7 @@ lex_exit_status_e handle_braces(lexer_res_t *lex_res, token_node_t *cur_node, ch
 /**
  * @brief Flushes the current token when lexing ends.
  * 
- * @param tk_chain    A pointer to the built token chain.
+ * @param lex_res     A pointer to the built lexer result.
  * @param cur_state   The lexer current state.
  * @param pos         A pointer to the current writing position.
  * 
@@ -54,5 +58,15 @@ lex_exit_status_e handle_braces(lexer_res_t *lex_res, token_node_t *cur_node, ch
  */
 lex_exit_status_e flush_current_token(lexer_res_t *lex_res, lexer_state_e cur_state, size_t *pos);
 
+
+/**
+ * @brief Assign the given formatted input to the lexer result error field.
+ */
+void set_lex_res_error(lexer_res_t *lex_res, char *fmt, ...);
+
+/**
+ * @brief Assign the given formatted input to the lexer result error information field.
+ */
+void set_lex_res_error_info(lexer_res_t *lex_res, char *fmt, ...);
 
 #endif

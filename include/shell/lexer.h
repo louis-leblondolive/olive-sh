@@ -37,13 +37,16 @@ typedef enum lex_exit_status {
 } lex_exit_status_e;
 
 
+/**
+ * @brief Result of a lexing operation. 
+ */
 typedef struct lexer_res_s {
-    bool            success; 
-    token_chain_t   *tk_chain;
-    char            *error;
-    char            *error_info;
-    size_t          error_pos;
-} lexer_res_t ; 
+    bool            success;        /** true if lexing succeeded, false otherwise. */
+    token_chain_t   *tk_chain;      /** The built token chain, only valid if success is true. */
+    char            *error;         /** Human readable encountered error, set only on failure. */
+    char            *error_info;    /** Additional context for the error. */
+    size_t          error_pos;      /** The position in the command where the error was met. */
+} lexer_res_t; 
 
 
 /**
@@ -60,9 +63,8 @@ typedef enum lexer_state {
     IN_SG_QUOTE,                /** Inside single quotes. */
     IN_DB_QUOTE,                /** Inside double quotes. */
     ESCAPE_IN_DB_QUOTE,         /** Reading an escaped character inside quotes. */
-    IN_DOLLAR_IN_DB_QUOTE,      /** Reading a variable name after '$' outside quotes. */
-    IN_BRACES_IN_DB_QUOTE       /** Reading a variable name inside ${...} outside quotes. */
-
+    IN_DOLLAR_IN_DB_QUOTE,      /** Reading a variable name after '$' inside quotes. */
+    IN_BRACES_IN_DB_QUOTE       /** Reading a variable name inside ${...} inside quotes. */
 
 } lexer_state_e;
 
