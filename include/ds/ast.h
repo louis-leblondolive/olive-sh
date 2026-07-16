@@ -140,5 +140,7 @@ ast_node_t *init_node(void);
 void free_ast(ast_node_t *root);
 int add_child_left(ast_node_t *parent, ast_node_t *child);
 int add_child_right(ast_node_t *parent, ast_node_t *child);
+int build_ast_text_cmd(ast_node_t *root);
+
 
 #endif

@@ -216,3 +216,135 @@ int add_child_right(ast_node_t *parent, ast_node_t *child){
 
     return 0;
 }
+
+
+int build_ast_text_cmd(ast_node_t *root){
+    if(!root) return 0;
+    free(root->str_cmd);
+
+    if(root->token == TOKEN_WORD){
+
+        // Convert args and redirs to strings 
+        size_t argc = (size_t)count_args(root->argv);
+        size_t redir_cnt = 0;
+        for (redir_t *red = root->redirs->first; red != NULL; red = red->next) redir_cnt ++;
+        
+        char *raw_args[argc > 0 ? argc : 1];
+        size_t i = 0;
+
+        for (arg_t *arg = root->argv->first; arg != NULL; arg = arg->next){
+            raw_args[i] = segment_chain_to_str(arg->seg_chain);
+            i++;
+        }
+
+        char *raw_redirs[redir_cnt > 0 ? redir_cnt : 1];
+        const char *redir_syms[redir_cnt > 0 ? redir_cnt : 1];
+        i = 0;
+        for (redir_t *red = root->redirs->first; red != NULL; red = red->next){
+            raw_redirs[i] = segment_chain_to_str(red->target);
+            redir_syms[i] = token_to_str(red->type);
+            i++;
+        }
+        
+        // Init res string 
+        size_t len = 0;
+        for (size_t j = 0; j < argc; j++){
+            len += strlen(raw_args[j]) + 1;
+        } 
+        for (size_t j = 0; j < redir_cnt; j++){
+            len += strlen(raw_redirs[j]) + 1;
+            len += strlen(redir_syms[j]) + 1;
+        }
+        len += 1; // counting final '\0'
+
+        char *res = (char*)malloc(sizeof(char) * len);
+        if(!res){
+            for (size_t j = 0; j < argc; j++) free(raw_args[j]);
+            for (size_t j = 0; j < redir_cnt; j++) free(raw_redirs[j]);
+            return 1;
+        }
+
+        // Copy raw args and redirs 
+        size_t pos = 0;
+        for (size_t j = 0; j < argc; j++) {
+
+            size_t loc_len = strlen(raw_args[j]);
+            memcpy(res + pos, raw_args[j], loc_len);
+            pos += loc_len;
+
+            if(j < argc - 1 || redir_cnt > 0){
+                res[pos] = ' ';
+                pos++;
+            }
+
+            free(raw_args[j]); 
+        }
+
+        for (size_t j = 0; j < redir_cnt; j++) {
+
+            size_t sym_len = strlen(redir_syms[j]);
+            memcpy(res + pos, redir_syms[j], sym_len);
+            pos += sym_len;
+
+            res[pos] = ' '; 
+            pos++;
+
+            size_t loc_len = strlen(raw_redirs[j]);
+            memcpy(res + pos, raw_redirs[j], loc_len);
+            pos += loc_len;
+
+            if(j < redir_cnt - 1){
+                res[pos] = ' ';
+                pos++;
+            }
+            free(raw_redirs[j]); 
+        }
+
+        res[pos] = '\0';
+        root->str_cmd = res;
+        return 0;
+    }
+
+    else {
+
+        if(build_ast_text_cmd(root->left) != 0 || build_ast_text_cmd(root->right) != 0){
+            return 1;
+        }
+
+        char *sym = token_to_str(root->token);
+
+        size_t sym_len = strlen(sym);
+        size_t left_len = root->left ? strlen(root->left->str_cmd) : 0;
+        size_t right_len = root->right ? strlen(root->right->str_cmd) : 0;
+        
+        size_t len = sym_len + 1;
+
+        if(root->left) len += left_len + 1;
+        if(root->right) len += right_len + 1;
+
+        char *res = (char*)malloc(sizeof(char) * len);
+        if(!res) return 1;
+
+        size_t pos = 0;
+        if(root->left){
+            memcpy(res, root->left->str_cmd, left_len);
+            pos += left_len;
+            res[pos] = ' '; pos++;
+        }
+
+        memcpy(res + pos, sym, sym_len);
+        pos += sym_len;
+
+        if(root->right){
+            res[pos] = ' '; pos++;
+            memcpy(res + pos, root->right->str_cmd, right_len);
+            pos += right_len;
+        }
+
+        res[pos] = '\0';
+        root->str_cmd = res;
+        return 0;
+    }
+
+    return 1;   // unreachable
+}
