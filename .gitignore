@@ -1,5 +1,6 @@
 .vscode
 obj/
+obj-debug/
 bin/
 tmp/
 .DS_Store
