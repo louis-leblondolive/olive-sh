@@ -4,7 +4,7 @@
 
 exec_res_t run_builtin(int id, int argc, char **argv, env_t *env, int fd_in, int fd_out){
     
-    print_debug("Running command\n");
+    print_debug("Running builtin command\n");
     
     // Setup I/O
     int save_in = -1;
