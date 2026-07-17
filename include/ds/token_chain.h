@@ -12,7 +12,7 @@
  * @file token_chain.h
  * @brief Token chain data structures and operations for the shell lexer.
  * 
- * Define the segment and token node/chain types, and provide functions to build,
+ * Defines the segment and token node/chain types, and provides functions to build,
  * manipulate and free token and segments chains produced in the lexer.
  */
 
@@ -29,12 +29,12 @@ typedef enum seg_type {
 /**
  * @brief A segment of a token's value.
  * 
- * Tokens are split into segments to distinguish litteral parts from variables (e.g. "hello$WORLD").
+ * Tokens are split into segments to distinguish literal parts from variables (e.g. "hello$WORLD").
  */
 typedef struct segment_s {
-    seg_type_e       type;                
-    char             value[MAX_WORD_LENGTH];
-    struct segment_s *next;
+    seg_type_e       type;      /** Kind of segment (SEG_LITERAL or SEG_VAR). */
+    char             value[MAX_WORD_LENGTH];    /** Segment raw text (literal value or variable name). */
+    struct segment_s *next;     /** Next segment in the chain. */
 } segment_t; 
 
 
@@ -59,21 +59,21 @@ typedef enum token {
  * @brief A node in the token chain, representing a single token.
  */
 typedef struct token_node {
-    token_e token; 
+    token_e token;    /** Node token, either WORD or operator. */
 
-    segment_t *first_seg;
-    segment_t *last_seg;
+    segment_t *first_seg;       /** First segment of the node token chain. */
+    segment_t *last_seg;        /** Last segment of the node token chain. */
 
-    struct token_node *prev;
-    struct token_node *next;
+    struct token_node *prev;    /** Previous token in the chain. */
+    struct token_node *next;    /** Next token in the chain. */
 } token_node_t ;
 
 /**
  * @brief A token node doubly-linked list.
  */
 typedef struct token_chain {
-    token_node_t *first;
-    token_node_t *last;
+    token_node_t *first;    /** First node of the chain. */
+    token_node_t *last;     /** Last node of the chain. */
 } token_chain_t ;
 
 
@@ -85,12 +85,12 @@ typedef struct token_chain {
 int add_segment(token_node_t *node);
 
 /**
- * @brief Free a segment chain.
+ * @brief Frees a segment chain.
  */
 void free_segment_chain(segment_t *chain);
 
 /**
- * @brief Free all segments of a token node.
+ * @brief Frees all segments of a token node.
  */
 void free_node_segment_chain(token_node_t *node);
 
@@ -100,13 +100,13 @@ void free_node_segment_chain(token_node_t *node);
 void clean_node_segment_chain(token_node_t *node);
 
 /**
- * @brief Expands variables into their litteral value and concatenates segments into a string.
+ * @brief Expands variables into their literal value and concatenates segments into a string.
  * @return NULL on error, the resulting string otherwise.
  */
 char *expand_segment_chain(env_t *env, segment_t *chain);
 
 /** 
- * @brief Convert a segment chain to the litteral string it represents. 
+ * @brief Converts a segment chain to the literal string it represents. 
  */
 char *segment_chain_to_str(segment_t *chain);
 
@@ -118,7 +118,7 @@ char *segment_chain_to_str(segment_t *chain);
 char *token_to_str(token_e token);
 
 /**
- * @brief Tests if a token is ; or &
+ * @brief Tests if a token is ; or &.
  */
 bool is_delim(token_e token);
 
@@ -130,7 +130,7 @@ bool is_delim(token_e token);
 token_chain_t *init_token_chain(void);
 
 /**
- * @brief Free the given token chain and all its nodes.
+ * @brief Frees the given token chain and all its nodes.
  */
 void free_token_chain(token_chain_t *tk_chain);
 
