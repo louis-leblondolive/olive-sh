@@ -9,7 +9,7 @@
  * @file job_table.h
  * @brief Job and job table operations.
  * 
- * Define the job and job table type, and provide functions to build and 
+ * Defines the job and job table type, and provides functions to build and 
  * manipulate job tables in the executor. 
  */
 
@@ -43,14 +43,14 @@ typedef struct job_s {
  */
 typedef struct job_table_s {
     size_t capacity;   /** Table current maximal size */
-    job_t **tbl;       /** Job table */
+    job_t **tbl;       /** Array of job pointers, NULL indicating an available slot. */
 } job_table_t;
 
 
 //  ----- JOB MANAGEMENT -----------------------------------------------
 /**
  * @brief Creates a new job
- * @warning The created job will have it's job id set to -1. Job id assignation occurs when the job is 
+ * @warning The created job will have its job id set to -1. Job id assignation occurs when the job is 
  *  added to a job table.
  * @note If the given command is NULL, an empty string will be assigned to the corresponding field. 
  * @return A pointer to the new job, or NULL on error. 
@@ -63,14 +63,14 @@ job_t *job_init(pid_t pgid, pid_t leader_pid, int std_err_fd, char *job_cmd);
 void free_job(job_t *job);
 
 /**
- * @brief Update the value of a job command. 
+ * @brief Updates the value of a job command. 
  * @note This function will duplicate the given command. If the command is NULL, 
  * the job command will be set to an empty string. 
  */
 void update_job_cmd(job_t *job, char *cmd);
 
 
-//  ----- JOB MANAGEMENT -----------------------------------------------
+//  ----- JOB TABLE MANAGEMENT -----------------------------------------------
 
 /**
  * @brief Creates a fresh job table. 
@@ -85,7 +85,7 @@ job_table_t *job_table_init(void);
 void free_job_table(job_table_t *job_tbl);
 
 /**
- * @brief Adds a job to a job table by filling the first gap found, or expaning the table size. 
+ * @brief Adds a job to a job table by filling the first gap found, or expanding the table size. 
  * @return Returns the job id of the added job, i.e. its position in the table. On error, returns -1. 
  * @note The "job_id" field of the added job is filled automatically by this function. 
  */
