@@ -13,6 +13,7 @@
  * 
  * Transforms a token chain into an AST using recursive descent, following 
  * POSIX shell grammar priority rules : command < pipe < && < || < ; / &. 
+ * See also: parser_internal.h
  */
 
 

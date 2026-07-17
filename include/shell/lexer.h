@@ -15,6 +15,7 @@
  * 
  * Transforms a raw input string into a token chain, handling variable 
  * detection, quoting rules and shell operators.
+ * See also: lexer_internal.h, lexer_rules.h
  */
 
 
