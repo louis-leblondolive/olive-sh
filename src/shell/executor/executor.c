@@ -173,8 +173,7 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
             if(cfg_infos.xtrace){
                 char *ps4 = expand_var(env, "PS4");
                 fprintf(stderr, "%s ", ps4);
-                for (int i = 0; i < argc; i++) fprintf(stderr, "%s ", argv[i]);
-                printf("\n");
+                printf("%s\n", ast->str_cmd);
                 free(ps4);
             }
             
