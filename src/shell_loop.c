@@ -5,8 +5,10 @@ int run_shell(char **envp){
 
     lexer_res_t lex_res;
     parse_res_t parse_res;
+    int exit_res = 0;
 
     // ----- SHELL INIT -----------------------------------------------------------------------------
+    bool interactive = isatty(STDIN_FILENO);
     int init_res = 0;
 
     // Init readline hook
@@ -70,8 +72,10 @@ int run_shell(char **envp){
         if(sigsetjmp(jump_buffer, 1) != 0){
             if(lex_res.tk_chain) free_token_chain(lex_res.tk_chain);
             if(parse_res.ast) free_ast(parse_res.ast);
-            rl_free_line_state();
-            rl_cleanup_after_signal();
+            if(interactive){
+                rl_free_line_state();
+                rl_cleanup_after_signal();
+            } 
         }
 
         lex_res.tk_chain = NULL;
@@ -79,11 +83,21 @@ int run_shell(char **envp){
         jump_active = 1;
 
         // Read user command line
-        char *line = readline("> ");
+        char *line = NULL;
+        
+        if(interactive) line = readline("> ");
+        else {
+            size_t buf_size = 0;
+            ssize_t n = getline(&line, &buf_size, stdin);
+
+            if(n < 0) { free(line); line = NULL; }
+            else if(n > 0 && line[n - 1] == '\n') line[n - 1] = '\0';
+        }
+
         jump_active = 0;
         
-        if(!line) continue;
-        if(*line) add_history(line);
+        if(!line) break;
+        if(interactive && *line) add_history(line);
 
 
         // ----- LEXING ----------------------------------------------------- 
@@ -159,17 +173,16 @@ int run_shell(char **envp){
         switch(res.kind){
 
             case RES_STOPPED:
-                env_export(&env, "?", "%d", 128 + res.stop_sig);
+                exit_res = 128 + res.stop_sig;
                 set_shell_foreground();
                 break;
 
             case RES_SIGNALED:
-                env_export(&env, "?", "%d", 128 + res.term_sig);
+                exit_res = 128 + res.term_sig;
                 break;
 
             case RES_EXITED:
-
-                env_export(&env, "?", "%d", res.exit_code);
+                exit_res = res.exit_code;
 
                 if(res.exit_code != 0){
         
@@ -202,7 +215,7 @@ int run_shell(char **envp){
                 break;
         }
 
-        
+        env_export(&env, "?", "%d", exit_res);
         
         close(err_pipe[0]);
         
@@ -219,5 +232,5 @@ int run_shell(char **envp){
     free_foreground_job();
     free_main_job_table();
 
-    return 0;
+    return exit_res;
 }

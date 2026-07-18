@@ -16,7 +16,8 @@ exec_res_t builtin_echo(int argc, char **argv, env_t *env){
     if(option_n) i = 2;
 
     while (i < argc){
-        printf("%s ", argv[i]);
+        printf("%s", argv[i]);
+        if(i + 1 < argc) printf(" ");
         i ++;
     }
     
