@@ -15,24 +15,40 @@
 #include "token_chain.h"
 #include "ast.h"
 
+/**
+ * @file printer.h
+ * @brief Custom ouput management.
+ */
 
-// Prints an info and adds the "[INFO]" beacon
+/**
+ * @brief Prints an info and adds the "[INFO]" beacon.
+ */
 void print_info(char *format, ...);
 
-// Prints an info and adds the "[DEBUG]" beacon
+/**
+ * @brief Prints an info and adds the "[DEBUG]" beacon.
+ */
 void print_debug(char *format, ...);
 
-// Prints a hint and adds the "Hint:" beacon
+/**
+ * @brief Prints a hint and adds the "Hint:" beacon.
+ */
 void print_hint(char *format, ...);
 
-// Prints an error to the format : title - description and 
-//  adds a "See more details" prompt.
+/**
+ * @brief Prints an error to the format : title - description and 
+ * adds a "See more details" prompt.
+ */
 void print_error(char *title, char *description, char *errlog);
 
-// Prints a token chained list
+/**
+ * @brief Prints a token chained list.
+ */
 void print_token_chain(token_chain_t *tk_chain);
 
-// Prints an abstract syntax tree
+/**
+ * @brief Prints an abstract syntax tree.
+ */
 void print_ast(ast_node_t *ast, int depth);
 
 #endif
