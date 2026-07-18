@@ -70,7 +70,7 @@ int env_export(env_t *env, char *var_name, char *var_value_fmt, ...){
 
 
 int env_unset(env_t *env, char *var){
-    if(!var) return -1;
+    if(!var) return 1;
 
     env_t cur_var = *env;
     env_t prev_var = NULL;
@@ -161,7 +161,7 @@ char **env_chain_to_array(env_t *env){
 
 int env_array_to_chain(char **env_arr, env_t *env){
     
-    if(!env_arr || !env) return -1;
+    if(!env_arr || !env) return 1;
     
     for (size_t i = 0; env_arr[i] != NULL; i++){
         
@@ -175,7 +175,7 @@ int env_array_to_chain(char **env_arr, env_t *env){
         free(name);
         free(value);
 
-        if(res != 0) return -1;
+        if(res != 0) return 1;
     }
     
     return 0;

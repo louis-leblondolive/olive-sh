@@ -2,9 +2,9 @@
 #include "env_internal.h"
 
 
-env_t init_env_var(char *name, char *value){
+env_var_t *init_env_var(char *name, char *value){
 
-    env_t var = (env_t)malloc(sizeof(env_var_t));
+    env_var_t *var = (env_var_t*)malloc(sizeof(env_var_t));
     if(!var) return NULL;
 
     var->next = NULL;
@@ -26,7 +26,7 @@ env_t init_env_var(char *name, char *value){
 }
 
 
-void free_env_var(env_t var){
+void free_env_var(env_var_t *var){
     if(!var) return;
 
     if(var->name) free(var->name);
@@ -49,7 +49,7 @@ size_t env_var_count(env_t *env){
 }
 
 
-char *format_env_var(env_t var){
+char *format_env_var(env_var_t *var){
     if(!var || !var->name || !var->value) return NULL;
 
     size_t name_size = strlen(var->name);
