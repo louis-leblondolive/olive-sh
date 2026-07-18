@@ -1,8 +1,22 @@
+# --- OS Detection ---
+UNAME_S := $(shell uname -s)
+
 # --- Compiler Configuration ---
 CC      = gcc
-READLINE_DIR = /opt/homebrew/opt/readline
-CFLAGS  = -Wall -Wextra -Werror -g -std=c11 -I$(READLINE_DIR)/include -D_POSIX_C_SOURCE=200809L
-LDFLAGS = -L$(READLINE_DIR)/lib -lreadline
+CFLAGS  = -Wall -Wextra -Werror -g -std=c11
+LDFLAGS = -lreadline
+
+# --- OS Specific Flags ---
+ifeq ($(UNAME_S),Linux)
+    CFLAGS += -D_GNU_SOURCE
+endif
+
+ifeq ($(UNAME_S),Darwin)
+    CFLAGS += -D_DARWIN_C_SOURCE
+    READLINE_DIR = /opt/homebrew/opt/readline
+    CFLAGS += -I$(READLINE_DIR)/include
+    LDFLAGS += -L$(READLINE_DIR)/lib
+endif
 
 # --- Debug Configuration ---
 DEBUG_CFLAGS  = $(CFLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer -O0
