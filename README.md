@@ -1,33 +1,42 @@
 # olive-sh
 
+![CI](https://github.com/louis-leblondolive/olive-sh/actions/workflows/ci.yml/badge.svg)
+
 A minimalist POSIX shell built in C from scratch. This project was initially developed as a deep dive into POSIX interprocess communication and signal management, and continues to be regularly updated. 
 
 >[!IMPORTANT]
->This project only includes macOS support.
+>This project includes macOS and Linux support.
 
 ## Main Features
 - **AST-based interpreter** - the input goes through a FSM-based lexer, producing a token stream, then a recursive descent parser that emits an AST, which the executor runs recursively. Clean separation between lexing, parsing and execution. 
 - **Command execution** - `$PATH` resolution, logic operators (`&&`, `||`) and correct `$?` exit-status propagation. 
 - **Pipes and redirection** - multiple pipe chains (`|`), `>`, `>>` and `<`.
 - **Variable expansion** - environment variables and special parameters (`$?`) with segment aware variable expansion. 
-- **Signal handling** - correct `SIGINT` and `SIG_CHLD` behaviour in both interactive and pipeline context. 
-- **Builtins** - `echo`, `cd`, `pwd`, `export`, `unset`, `env`, `exit`, plus `errlog` (structured error management) and `olvsh` (runtime option management).
+- **Job control** - `&`, `bg`/`fg` and `Ctrl+Z` support, with proper process group, supervisor and terminal ownership (`tcsetpgrp`/`setpgid`). 
+- **Signal handling** - correct `SIGINT` and `SIGCHLD` behaviour in both interactive and pipeline context. 
+- **Builtins** - `echo`, `cd`, `pwd`, `export`/`unset`, `env`, `exit`, `jobs`, `bg`/`fg` plus `errlog` (structured error management) and `olvsh` (runtime option management).
 
 
 ## Build and Run 
 
-The following conditions are prerequisites : 
-- macOS (see [Important] notice above)
+The following conditions are prerequisites:
+- macOS or Linux (see [Important] notice above)
 - `cc`
 - `make`
 
-To get started, use the following : 
+This project also uses GNU `readline` as a dependency. Be sure to have it install, or to have run:
+```bash
+brew install readline  # macOS users 
+sudo apt install libreadline-dev # Linux users 
+```
+
+To get started, use the following:
 ```bash
 git clone https://github.com/louis-leblondolive/olive-sh.git
 cd olive-sh
 ```
 
-To compile, type in :
+Then compile with:
 
 ```bash
 make 
@@ -51,7 +60,7 @@ Exited with status 0
 ```
 
 ### Builtins 
-Usual builtins are directly implemented, including `echo`, `cd`, `pwd`, `env`, `export`, `unset` and `exit`.
+Usual builtins are directly implemented, including `echo`, `cd`, `pwd`, `env`, `export`/`unset`, `jobs`, `bg`/`fg` and `exit`.
 `$PATH` resolution provides access to any other available command. 
 
 ```bash 
@@ -99,6 +108,45 @@ second
 >[!NOTE]
 >In the last example above, exit status is given by the pipe last command exit status. This setting can be overriden using the `pipefail` option.  
 
+### Job control
+Job control is supported, including `&`, `bg`/`fg` and `Ctrl+Z` management. The `jobs` builtin is 
+also available, with a colored display of processes status (not rendered in this snippet). 
+```bash
+# Run processes in background 
+> sleep 10 & sleep 20 & sleep 30 &
+[1] - 40044
+[2] - 40045
+[3] - 40046
+
+# Display background processes 
+> jobs
+[1] - RUNNING     sleep 10
+[2] - RUNNING     sleep 20
+[3] - RUNNING     sleep 30
+
+# Foreground job 2, then suspend it with Ctrl+Z
+> fg %2
+^Z
+olive-sh: suspended sleep 20
+
+# Job 1 completion notification
+> [1] - DONE        sleep 10    
+> jobs
+[2] - SUSPENDED   sleep 20
+[3] - RUNNING     sleep 30
+
+# Foreground and kill job 3 
+> fg %3
+^C
+> jobs
+[2] - SUSPENDED   sleep 20
+
+# Resume job 2 
+> bg %2
+> [2] - DONE        sleep 20
+```
+
+
 ### Logic operators 
 Logic operators (`&&` and `||`) are supported. `;` usage is also available.  
 ```bash 
@@ -129,29 +177,29 @@ A builtin `errlog` command can be used to display details about the last error. 
 
 ```bash
 # error reporting example 
-> cat /nonexistant
+> cat /nonexistent
 EXECUTION ERROR - process exited with code 1
 Run errlog for more details.
 
 > errlog
 Last error details :
-Command: cat /nonexistant
+Command: cat /nonexistent
 Date: 2026-06-13 15:45:04
-Info: cat: /nonexistant: No such file or directory
+Info: cat: /nonexistent: No such file or directory
 
 Hint: Details can be shown automatically. To do so, run olvsh --errlog
 
 # error reporting with --errlog enabled 
-> cat /nonexistant
+> cat /nonexistent
 EXECUTION ERROR - process exited with code 1
-cat: /nonexistant: No such file or directory
+cat: /nonexistent: No such file or directory
 ```
 
 ### Runtime options 
 To enable / disable an option, simply run : 
 ```bash
-olvsh --option_name     # enables an option 
-olvsh --no-option_name  # disables the option 
+> olvsh --option_name     # enables an option 
+> olvsh --no-option_name  # disables the option 
 ```
 
 The following standard options are supported :
@@ -160,10 +208,11 @@ The following standard options are supported :
 - `nounset`
 - `xtrace`
 
-Three custom options are also featured : 
-- `errlog` : displays error detail systematically               (disabled by default)
-- `hints` : allows hints to be printed                          (enabled by default)
-- `debug` : display information about the interpreting process  (disabled by default)
+| Option   | Description                               | Default  |
+|----------|-------------------------------------------|----------|
+| `errlog` | displays error detail systematically      | disabled |
+| `hints`  | allows hints to be printed                | enabled  |
+| `debug`  | display information about interpreting    | disabled |
 
 
 ## Technical Deep Dive
