@@ -24,7 +24,7 @@ The following conditions are prerequisites:
 - `cc`
 - `make`
 
-This project also uses GNU `readline` as a dependency. Be sure to have it install, or to have run:
+This project also uses GNU `readline` as a dependency. Be sure to have it installed, or to have run:
 ```bash
 brew install readline  # macOS users 
 sudo apt install libreadline-dev # Linux users 
@@ -208,6 +208,8 @@ The following standard options are supported :
 - `nounset`
 - `xtrace`
 
+Three custom options are also implemented: 
+
 | Option   | Description                               | Default  |
 |----------|-------------------------------------------|----------|
 | `errlog` | displays error detail systematically      | disabled |
@@ -236,72 +238,115 @@ flowchart LR
     end
 
     E["`**Environment** <br> Linked list`"] <-->|"get/set var"| exec
-    S["`**Signal handler** <br> SIGINT - SIGCHLD`"] -->|"longjmp · reap"| exec
+    S["`**Signal handler** <br> SIGINT - SIGCHLD - SIGTSTP`"] --> exec
+    J["`**Job control** <br> Track jobs`"] <-->|"foreground/suspend job"| exec
 ```
 
-- **Lexer**
+### Lexer
 
-    Instead of using fragile string splitting, `olive-sh` lexer uses a Finite State Machine (FSM) to ensure parsing robustness. 
+Instead of using fragile string splitting, `olive-sh` lexer uses a Finite State Machine (FSM) to ensure parsing robustness. 
 
 
-    #### Lexer output example 
-    ```bash
-    > echo "hello ${USER}" | cat && ls
+#### Lexer output example 
+```bash
+> echo "hello ${USER}" | cat && ls
 
-    [DEBUG] Lexed node chain :
-    WORD - segment chain :   (LITERAL)[echo]
-    WORD - segment chain :   (LITERAL)[hello ]  (VAR)[USER]
-    PIPE
-    WORD - segment chain :   (LITERAL)[cat]
-    AND
-    WORD - segment chain :   (LITERAL)[ls]
-    ```
+[DEBUG] Lexed node chain :
+WORD - segment chain :   (LITERAL)[echo]
+WORD - segment chain :   (LITERAL)[hello ]  (VAR)[USER]
+PIPE
+WORD - segment chain :   (LITERAL)[cat]
+AND
+WORD - segment chain :   (LITERAL)[ls]
+```
 
 >[!TIP]
 >This output can be seen directly in the shell. To do so, enalble the `--debug` option.
 
-    #### FSM implementation 
-    A simplified version of the FSM used to build the lexer is depicted below. A complete version of this flowchart and its transition matrix are available in the lexer [documentation]().
+#### FSM implementation 
+A simplified version of the FSM used to build the lexer is depicted below. A complete version of this flowchart and its transition matrix are available in the lexer [documentation]().
 
-    ```mermaid
-    stateDiagram-v2
+```mermaid
+stateDiagram-v2
 
-    state "START<br><i>inbetween words</i>" as START
-    state "WORD<br>Loop: *" as WORD
-    state "IN_DOLLAR<br>Loop: a-z A-Z " as IN_DOLLAR
-    state "IN_SG_QUOTE" as IN_SG_QUOTE
-    state "IN_DB_QUOTE" as IN_DB_QUOTE
-    state "IN_DOLLAR_IN_DB_QUOTE<br>Loop: a-z A-Z " as IN_DOLLAR_IN_DB_QUOTE
+state "START<br><i>inbetween words</i>" as START
+state "WORD<br>Loop: *" as WORD
+state "IN_DOLLAR<br>Loop: a-z A-Z " as IN_DOLLAR
+state "IN_SG_QUOTE" as IN_SG_QUOTE
+state "IN_DB_QUOTE" as IN_DB_QUOTE
+state "IN_DOLLAR_IN_DB_QUOTE<br>Loop: a-z A-Z " as IN_DOLLAR_IN_DB_QUOTE
 
-    [*] --> START
+[*] --> START
 
-    START --> WORD : *
-    START --> OPERATOR : &, |, &#59, <, >
+START --> WORD : *
+START --> OPERATOR : &, |, &#59, <, >
 
-    OPERATOR --> START : *
+OPERATOR --> START : *
 
-    WORD --> START : Separators
-    WORD --> IN_DOLLAR : $
-    WORD --> IN_SG_QUOTE : '
-    WORD --> IN_DB_QUOTE : "
+WORD --> START : Separators
+WORD --> IN_DOLLAR : $
+WORD --> IN_SG_QUOTE : '
+WORD --> IN_DB_QUOTE : "
 
-    IN_DOLLAR --> WORD : *
+IN_DOLLAR --> WORD : *
 
-    IN_SG_QUOTE --> WORD : '
+IN_SG_QUOTE --> WORD : '
 
-    IN_DB_QUOTE --> IN_DOLLAR_IN_DB_QUOTE : $
-    IN_DB_QUOTE --> WORD : "
+IN_DB_QUOTE --> IN_DOLLAR_IN_DB_QUOTE : $
+IN_DB_QUOTE --> WORD : "
 
-    IN_DOLLAR_IN_DB_QUOTE --> IN_DB_QUOTE : *
-    ``` 
-
-
+IN_DOLLAR_IN_DB_QUOTE --> IN_DB_QUOTE : *
+``` 
 
 
-- **Parser**
+### Parser 
+`olive-sh` parser relies on recursive descent: each precedence level is a function that calls the next tighter-binding level. It produces an Abstract Syntax Tree (AST), whose nodes are labelled with operators and leaves store commands.  The parser follows the following grammar, from `;`/`&` (loosest) to `|` (tightest). Note that `&&` and `||` are treated on two different levels to give `&&` higher precedence, matching bash’s behaviour : 
 
-- **Executor**
 
+| Level      | Expression parsed                             |
+|------------|------------------------------------------------|
+| `list`     | `and ( (';' \| '&') and )*`                     |
+| `and`      | `or ( '&&' or )*`                               |
+| `or`       | `pipeline ( '\|\|' pipeline )*`                 |
+| `pipeline` | `command ( '\|' command )*`                     |
+
+
+To parse commands, the parser simply consumes `WORD` tokens and assigns them to the argument and redirection fields of the newly created command node. 
+
+
+
+#### Parser output example
+```bash
+> echo "hello ${USER}" | cat && ls
+...
+[DEBUG] Parsed AST :
+
+		 -- COMMAND NODE --
+		COMMAND :  (LITERAL)[echo]
+		ARGUMENTS :   (1)  (LITERAL)[hello ]  (VAR)[USER]
+		REDIRS :
+    |
+		 -- COMMAND NODE --
+		COMMAND :  (LITERAL)[cat]
+		ARGUMENTS :
+		REDIRS :
+&&
+	 -- COMMAND NODE --
+	COMMAND :  (LITERAL)[ls]
+	ARGUMENTS :
+	REDIRS :
+```
+
+
+### Executor 
+
+`olive-sh` executor consists in recursively roaming the AST. Each call returns a tagged union (`exec_res_t`) indicating whether the process was stopped, terminated by a signal, or exited normally, and the resulting exit code or signal number. The tag prevents misinterpreting an exit code as a signal number, which a simple int status couldn't guarantee. 
+
+When meeting an operator node, the behaviour of the executor depends on its type. Sequential operators (`;`, `&&`, `||`) run their first child and wait for the result before deciding to run the second: `;` always runs it, while `&&` and `||` run it conditionally on the first child status. The background operator `&` is also on this level, but doesn't wait: it launches its child asynchronously and immediately proceeds. On the other hand, the (concurrent) pipe operator runs both children at once and links their I/O. 
+
+This distinction matters for process group management. While sequential operators do not modify the pgid or the foregound job, concurrent operators, if the shell itself is in the foreground, fork a leader process,  make it the new foreground job via `setpgid()` and pass its pgid to its children. 
+
+Each command node calculates its own copy of `argv` and `envp`, ensuring that a variable exported earlier in the prompt is visible to commands further on the same line. 
 
 
 ## Repository Structure 
@@ -312,6 +357,7 @@ This repository has the following structure :
 ├── src/
 │   ├── shell/
 |   |   ├── signals/
+|   |   ├── job_control/
 │   │   ├── executor/
 │   │   ├── lexer/
 │   │   └── parser/
@@ -327,6 +373,8 @@ This repository has the following structure :
 ├── include/
 │   └── ...
 |
+├── test/
+|
 ├── bin/
 │
 └── Makefile
@@ -341,6 +389,7 @@ This repository has the following structure :
         - `parser` produces an AST using recursive descent. 
         - `executor` runs the AST recursively. `exec_internal.c` handles asynchronous command execution, I/O redirection and builtins dispatch. 
         - `signals` contains the signal handler. 
+        - `job_control` provides job handling mechanisms. 
 
     - **`env`** 
 
@@ -357,6 +406,7 @@ This repository has the following structure :
         This folder contains the implementation of the data structutures used in the shell. 
         - `token_chain.c` contains the code for the token and segment list used by the lexer. 
         - `ast.c` contains the code for the Abstract Syntax Tree used by both the parser and the executor. 
+        - `job_table.c` defines the job type and provides access to a dynamic job array. 
 
     - **`utils`**
 
@@ -369,7 +419,11 @@ This repository has the following structure :
 
 - **`include`**
 
-    This folder follows the same structure as `src`, but with headers instead of .c files. 
+    This folder follows the same structure as `src`, but with headers instead of `.c` files. 
+
+- **`test`**
+
+    This folder contains the shell testing script used for development and CI. 
 
 - **`bin`**
 
