@@ -349,6 +349,28 @@ This distinction matters for process group management. While sequential operator
 Each command node calculates its own copy of `argv` and `envp`, ensuring that a variable exported earlier in the prompt is visible to commands further on the same line. 
 
 
+### Job control 
+As the kernel routes signals by `pgid` rather than by `pid`, a `Ctrl+C` or `Ctrl+Z` sent to the shell would reach all its processes, rendering the suspension of an independent command group impossible. `olive-sh` job controller addresses this constraint by grouping each of the command's processes under a common `pgid` (see Executor) and using `tcsetpgrp` to give terminal ownership to this group. The job can be suspended or interrupted as a whole. The currently foreground job is then tracked with a singleton accessor. This centralizes access and avoids races between the SIGCHLD handler and the rest of the shell, which global variable wouldn't protect against. 
+
+A job moves through several states, with transitions triggered by signals:
+
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": true}} }%%
+flowchart LR
+    A["`**Suspended**`"] -->|"SIGCONT (via bg/fg)"| B
+    B["`**Running**`"] -->|"SIGCHLD"| C["`**Done**`"]
+    B -->|"SIGTSTP (Ctrl+Z)"| A
+    start(( )) --> B
+```
+
+Background jobs are stored in a job table, itself stored in a singleton accessor. A done job collector scans the table to delete finished jobs on each REPL loop iteration. The table is dynamic, so the cost of adding a job is constant on average. 
+
+The `fg`/`bg` builtins can directly access the job at the given table index. While `bg` only has to send `SIGCONT` to the corresponding process group, `fg` reassigns it as the foreground job, calls `tcsetpgrp` and waits for it to exit. 
+
+
+### Signal handler 
+
+
 ## Repository Structure 
 This repository has the following structure : 
 ```text
