@@ -369,6 +369,13 @@ The `fg`/`bg` builtins can directly access the job at the given table index. Whi
 
 
 ### Signal handler 
+Aside from making the shell ignore `Ctrl+C` and `Ctrl+Z` and resetting forked processes' signal handlers, `olive-sh` signal handler is built to avoid reentrency issues faced when using `readline()` and memory allocation, relying on two different solutions: 
+
+- As `readline()` uses an internal buffer that a `SIGINT` during read might corupt, the signal handler uses a `volatile sig_atomic_t` flag indicating if readline is currently running. It can then call `siglongjmp` back to a `sigsetjmp` checkpoint inside the REPL loop which resets `readline()` before its next iteration.
+
+- Background jobs termination is indicated by `SIGCHLD` reception. However, removing a job from the job table isn't async-signal-safe: as the table is dynamic, any modification might trigger memory reallocation. Therefore, the handler marks the job with a `DONE` flag, the REPL loop being in charge of collecting and disposing these jobs at the beginning of every iteration.
+
+In order for `SIGCHLD` to indicate the termination of a background job, it cannot be received during foreground command execution. It is therefore suspended during AST execution via `sigprocmask`, and then unblocked when it completes. This ensures any `SIGCHLD` issued during execution will be delivered when it ends instead of being simply ignored and lost. 
 
 
 ## Repository Structure 
