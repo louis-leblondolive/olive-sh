@@ -12,7 +12,7 @@ A minimalist POSIX shell built in C from scratch. This project was initially dev
 - **Command execution** - `$PATH` resolution, logic operators (`&&`, `||`) and correct `$?` exit-status propagation. 
 - **Pipes and redirection** - multiple pipe chains (`|`), `>`, `>>` and `<`.
 - **Variable expansion** - environment variables and special parameters (`$?`) with segment aware variable expansion. 
-- **Job control** - `&`, `bg`/`fg` and `Ctrl+Z` support, with proper process group, supervisor and terminal ownership (`tcsetpgrp`/`setpgid`). 
+- **Job control** - `&`, `bg`/`fg` and `Ctrl+Z` support, with proper process group `pgid`, leadership and terminal ownership (`tcsetpgrp`/`setpgid`). 
 - **Signal handling** - correct `SIGINT` and `SIGCHLD` behaviour in both interactive and pipeline context. 
 - **Builtins** - `echo`, `cd`, `pwd`, `export`/`unset`, `env`, `exit`, `jobs`, `bg`/`fg` plus `errlog` (structured error management) and `olvsh` (runtime option management).
 
@@ -221,7 +221,7 @@ Three custom options are also implemented:
 
 ### Shell general architecture
 
-The interpreter pipeline is divided in three steps. The executor also interacts with the environment and the signal handler. 
+The interpreter pipeline is divided into three steps. The executor also interacts with the environment and the signal handler. 
 
 ```mermaid
 %%{init: {"flowchart": {"htmlLabels": true}} }%%
@@ -261,7 +261,7 @@ WORD - segment chain :   (LITERAL)[ls]
 ```
 
 >[!TIP]
->This output can be seen directly in the shell. To do so, enalble the `--debug` option.
+>This output can be seen directly in the shell. To do so, enable the `--debug` option.
 
 #### FSM implementation 
 A simplified version of the FSM used to build the lexer is depicted below. A complete version of this flowchart and its transition matrix are available in the lexer [documentation]().
@@ -350,7 +350,7 @@ Each command node calculates its own copy of `argv` and `envp`, ensuring that a 
 
 
 ### Job control 
-As the kernel routes signals by `pgid` rather than by `pid`, a `Ctrl+C` or `Ctrl+Z` sent to the shell would reach all its processes, rendering the suspension of an independent command group impossible. `olive-sh` job controller addresses this constraint by grouping each of the command's processes under a common `pgid` (see Executor) and using `tcsetpgrp` to give terminal ownership to this group. The job can be suspended or interrupted as a whole. The currently foreground job is then tracked with a singleton accessor. This centralizes access and avoids races between the SIGCHLD handler and the rest of the shell, which global variable wouldn't protect against. 
+As the kernel routes signals by `pgid` rather than by `pid`, a `Ctrl+C` or `Ctrl+Z` sent to the shell would reach all its processes, rendering the suspension of an independent command group impossible. `olive-sh` job controller addresses this constraint by grouping each of the command's processes under a common `pgid` (see Executor) and using `tcsetpgrp` to give terminal ownership to this group. The job can be suspended or interrupted as a whole. The currently foreground job is then tracked with a singleton accessor. This centralizes access and avoids races between the SIGCHLD handler and the rest of the shell, which plain global variable wouldn't protect against. 
 
 A job moves through several states, with transitions triggered by signals:
 
@@ -369,14 +369,13 @@ The `fg`/`bg` builtins can directly access the job at the given table index. Whi
 
 
 ### Signal handler 
-Aside from making the shell ignore `Ctrl+C` and `Ctrl+Z` and resetting forked processes' signal handlers, `olive-sh` signal handler is built to avoid reentrency issues faced when using `readline()` and memory allocation, relying on two different solutions: 
+Aside from making the shell ignore `Ctrl+C` and `Ctrl+Z` and resetting forked processes' signal handlers, `olive-sh` signal handler is built to avoid reentrancy issues faced when using `readline()` and memory allocation, relying on two different solutions: 
 
-- As `readline()` uses an internal buffer that a `SIGINT` during read might corupt, the signal handler uses a `volatile sig_atomic_t` flag indicating if readline is currently running. It can then call `siglongjmp` back to a `sigsetjmp` checkpoint inside the REPL loop which resets `readline()` before its next iteration.
+- As `readline()` uses an internal buffer that a `SIGINT` during read might corrupt, the signal handler uses a `volatile sig_atomic_t` flag indicating if readline is currently running. It can then call `siglongjmp` back to a `sigsetjmp` checkpoint inside the REPL loop which resets `readline()` before its next iteration.
 
 - Background jobs termination is indicated by `SIGCHLD` reception. However, removing a job from the job table isn't async-signal-safe: as the table is dynamic, any modification might trigger memory reallocation. Therefore, the handler marks the job with a `DONE` flag, the REPL loop being in charge of collecting and disposing these jobs at the beginning of every iteration.
 
 In order for `SIGCHLD` to indicate the termination of a background job, it cannot be received during foreground command execution. It is therefore suspended during AST execution via `sigprocmask`, and then unblocked when it completes. This ensures any `SIGCHLD` issued during execution will be delivered when it ends instead of being simply ignored and lost. 
-
 
 ## Repository Structure 
 This repository has the following structure : 
@@ -423,8 +422,8 @@ This repository has the following structure :
     - **`env`** 
 
         This folder contains the environment manager. 
-        - `env.c` implements the public environment function (export, unset, ...)
-        - `env_internal.c` implements the tools used in these function. 
+        - `env.c` implements the public environment functions (export, unset, ...)
+        - `env_internal.c` implements the tools used in these functions. 
 
     - **`builtins`**
 
@@ -432,7 +431,7 @@ This repository has the following structure :
 
     - **`ds`**
 
-        This folder contains the implementation of the data structutures used in the shell. 
+        This folder contains the implementation of the data structures used in the shell. 
         - `token_chain.c` contains the code for the token and segment list used by the lexer. 
         - `ast.c` contains the code for the Abstract Syntax Tree used by both the parser and the executor. 
         - `job_table.c` defines the job type and provides access to a dynamic job array. 
@@ -456,9 +455,39 @@ This repository has the following structure :
 
 - **`bin`**
 
-    This folder is the target for all the compiled binary file produced when running `make`. In particular, it contains the `olvsh` binary, used to run the shell.  
+    This folder is the target for all the compiled binary files produced when running `make`. In particular, it contains the `olvsh` binary, used to run the shell.  
 
-## Tests  
+## Tests
+This project includes an automated smoke test suite (`test/run_tests.sh`) used throughout development to report bugs and validate features. 
+
+### Test Categories
+The suite runs 33 assertions across 7 categories :
+- Basic command execution and exit codes
+- Logic operators (`&&`, `||` and `;`) and pipe chains
+- Variable expansion (`export` and `unset`)
+- Redirections, including invalid targets
+- Job control basics
+- Lexer edge cases: quoting, unterminated tokens, oversized words
+- Parser edge cases: malformed operators sequences asserted to fail cleanly rather than crash
+
+Clean failures on malformed inputs are tested with an `assert_no_crash` function, treating timeouts (124), ASan aborts (134) and segfaults (139) as failures.  
+
+
+### Tester Usage 
+#### Prerequisites 
+```bash
+bash
+```
+
+#### Usage
+```bash
+make debug
+bash test/run_tests.sh bin/olvsh-debug
+```
+
+>[!NOTE]
+>CI builds `olvsh` in debug mode (ASan) and runs the test suite with that binary so that memory errors and undefined behaviours are caught by the pipeline.
+
 
 ## References
 - [Beej's Guide to Interprocess Communication](https://beej.us/guide/bgipc/)
