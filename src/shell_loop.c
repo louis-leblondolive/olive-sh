@@ -225,6 +225,7 @@ int run_shell(char **envp){
 
         free_token_chain(lex_res.tk_chain);
         free_ast(parse_res.ast);
+        free(line);
     }
 
     // Clean before exit 
