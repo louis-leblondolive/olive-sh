@@ -168,8 +168,6 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
                 return exec_res_from_builtin(1);
             }
 
-            char *cmd_name = strdup(argv[0]);
-
             if(cfg_infos.xtrace){
                 char *ps4 = expand_var(env, "PS4");
                 fprintf(stderr, "%s ", ps4);
@@ -195,7 +193,7 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
             // ----- RUN -----
             exec_res_t exec_res;
 
-            int builtin_id = is_builtin(cmd_name);
+            int builtin_id = is_builtin(argv[0]);
             if(builtin_id >= 0){  // -------------- Run builtin command 
                 exec_res = run_builtin(builtin_id, argc, argv, env, fd_in, fd_out);
 

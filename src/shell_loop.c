@@ -137,6 +137,9 @@ int run_shell(char **envp){
             env_export(&env, "?", "2");
 
             free_token_chain(lex_res.tk_chain);
+            free(lex_res.error);
+            free(lex_res.error_info);
+
             free_ast(parse_res.ast);
             free(parse_res.error);
             free(parse_res.error_info);
@@ -154,7 +157,12 @@ int run_shell(char **envp){
             perror("pipe");
 
             free_token_chain(lex_res.tk_chain);
+            free(lex_res.error);
+            free(lex_res.error_info);
+
             free_ast(parse_res.ast);
+            free(parse_res.error);
+            free(parse_res.error_info);
 
             env_export(&env, "ERRCMD", "%s", line);
             env_export(&env, "ERRLOG", "olive-sh: pipe initialization issue");
@@ -222,10 +230,15 @@ int run_shell(char **envp){
         print_debug("Done execution\n");
 
         // ----- CLEAN --------------------------------------------------
+        free(line);
 
         free_token_chain(lex_res.tk_chain);
+        free(lex_res.error);
+        free(lex_res.error_info);
+
         free_ast(parse_res.ast);
-        free(line);
+        free(parse_res.error);
+        free(parse_res.error_info);
     }
 
     // Clean before exit 

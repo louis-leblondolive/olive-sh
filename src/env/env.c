@@ -58,6 +58,8 @@ int env_export(env_t *env, char *var_name, char *var_value_fmt, ...){
    
    // Variable not found, adding variable to env
    env_t new_var = init_env_var(var_name, var_value);
+   free(var_value);
+
    if(!new_var) return 1;
 
    if(prev_var) prev_var->next = new_var;

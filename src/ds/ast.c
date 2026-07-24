@@ -15,7 +15,7 @@ redir_chain_t *init_redir_chain(void){
 
 void free_redir_chain(redir_chain_t *rd_chain){
 
-    if(!rd_chain || !rd_chain->first) return;
+    if(!rd_chain) return;
     
     redir_t *redir = rd_chain->first;
     while(redir != NULL){
