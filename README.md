@@ -7,7 +7,16 @@ A minimalist POSIX shell built in C from scratch. This project was initially dev
 >[!IMPORTANT]
 >This project includes macOS and Linux support.
 
-## Main Features
+## Table-of-Contents
+* [Main Features](#main-features)
+* [Build and Run](#build-and-run)
+* [Usage](#usage)
+* [Technical Deep Dive](#technical-deep-dive)
+* [Repository Structure](#repository-structure)
+* [Tests](#tests)
+
+
+## Main-Features
 - **AST-based interpreter** - the input goes through a FSM-based lexer, producing a token stream, then a recursive descent parser that emits an AST, which the executor runs recursively. Clean separation between lexing, parsing and execution. 
 - **Command execution** - `$PATH` resolution, logic operators (`&&`, `||`) and correct `$?` exit-status propagation. 
 - **Pipes and redirection** - multiple pipe chains (`|`), `>`, `>>` and `<`.
@@ -17,7 +26,7 @@ A minimalist POSIX shell built in C from scratch. This project was initially dev
 - **Builtins** - `echo`, `cd`, `pwd`, `export`/`unset`, `env`, `exit`, `jobs`, `bg`/`fg` plus `errlog` (structured error management) and `olvsh` (runtime option management).
 
 
-## Build and Run 
+## Build-and-Run 
 
 The following conditions are prerequisites:
 - macOS or Linux (see [Important] notice above)
@@ -217,7 +226,7 @@ Three custom options are also implemented:
 | `debug`  | display information about interpreting    | disabled |
 
 
-## Technical Deep Dive
+## Technical-Deep-Dive
 
 ### Shell general architecture
 
@@ -377,7 +386,7 @@ Aside from making the shell ignore `Ctrl+C` and `Ctrl+Z` and resetting forked pr
 
 In order for `SIGCHLD` to indicate the termination of a background job, it cannot be received during foreground command execution. It is therefore suspended during AST execution via `sigprocmask`, and then unblocked when it completes. This ensures any `SIGCHLD` issued during execution will be delivered when it ends instead of being simply ignored and lost. 
 
-## Repository Structure 
+## Repository-Structure 
 This repository has the following structure : 
 ```text
 
