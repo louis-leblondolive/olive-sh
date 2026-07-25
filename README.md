@@ -14,6 +14,8 @@ A minimalist POSIX shell built in C from scratch. This project was initially dev
 * [Technical Deep Dive](#technical-deep-dive)
 * [Repository Structure](#repository-structure)
 * [Tests](#tests)
+* [Benchmark](#benchmark)
+* [References](#references)
 
 
 ## Main-Features
@@ -496,6 +498,62 @@ bash test/run_tests.sh bin/olvsh-debug
 
 >[!NOTE]
 >CI builds `olvsh` in debug mode (ASan) and runs the test suite with that binary so that memory errors and undefined behaviours are caught by the pipeline.
+
+
+## Benchmark
+This project includes a benchmark script (`test/bench.sh`) that was used to compare `olive-sh` performances to other shells like `bash`, in order to monitor and optimize its performances.  
+
+### Benchmark Results and Analysis
+Running the benchmark on the latest version of `olive-sh` returned the following results:
+
+```
+scenario                 olvsh (ms)      bash (ms)      ratio
+--------                 ----------   ------------      -----
+builtin (true)                 2.16           1.88      1.15x
+builtin (echo)                 3.14           3.32      0.95x
+external command             142.85         139.31      1.03x
+&& operator                    2.26           2.04      1.11x
+|| operator                    2.31           2.05      1.13x
+pipeline                     207.32         173.63      1.19x
+variables                      3.30           3.53      0.93x
+redirection                    3.13           3.32      0.94x
+
+
+scenario                 olvsh (ms)       zsh (ms)      ratio
+--------                 ----------   ------------      -----
+builtin (true)                 2.18           2.95      0.74x
+builtin (echo)                 3.13           4.25      0.74x
+external command             143.77         146.22      0.98x
+&& operator                    2.27           3.09      0.73x
+|| operator                    2.33           3.10      0.75x
+pipeline                     209.87         189.12      1.11x
+variables                      3.31           4.45      0.74x
+redirection                    3.13           4.25      0.74x
+```
+
+`olive-sh` competes with `bash` on variable expansion and redirection, but is slightly slower on pipelines execution. It also outperforms `zsh`, mainly because it is far less complex, especially when it comes to edge cases (array or subcommands, for instance, are not supported). Note that `zsh` is slower than `bash` due to its more complex line reading system. 
+
+`olive-sh` was optimized using fast paths for non-tty usages. As the implementation of the environment relies on linked lists (O(n) insertion and reading), it would be beaten by the other shells if the environment was bigger, but isn't a real concern as personal environment usually hold about 50 variables. 
+
+
+### Benchmark Usage
+#### Prerequisites 
+```bash
+hyperfine
+bash
+```
+
+#### Usage 
+Make sure to compile `olive-sh` before running any benchmark:
+```bash
+make
+bash test/bench.sh bin/olvsh 100
+```
+
+The benchmark will use `bash` as a reference by default, running 100 commands for each scenario. These can be changed using: 
+```bash
+bash test/bench.sh -s zsh bin/olvsh 42
+``` 
 
 
 ## References
