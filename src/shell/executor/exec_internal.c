@@ -357,6 +357,8 @@ int setup_params(env_t *env, ast_node_t *cmd_node, int *argc, char ***argv, char
     if(!*envp){
         char *unbound_info = expand_var(env, "ERRLOG");
         env_export(env, "ERRLOG", "olive-sh: couldn't resolve environment (%s)\n", unbound_info);
+        
+        free(unbound_info);
         free_arg_array(*argv);
         return -1;
     }

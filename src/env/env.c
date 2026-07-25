@@ -125,7 +125,7 @@ char *expand_var(env_t *env, char *var){
 
 
 void free_env_array(char **env_arr){
-
+    
     size_t i = 0;
     while(env_arr[i] != NULL){
         free(env_arr[i]);

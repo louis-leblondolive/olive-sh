@@ -165,6 +165,8 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
 
                 char *errlog = expand_var(env, "ERRLOG");
                 write(std_fd_err, errlog, strlen(errlog));
+                clean_exec_vars(argv, envp);
+
                 return exec_res_from_builtin(1);
             }
 
@@ -265,6 +267,10 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
 
                                 // Clean and exit 
                             if(WIFSTOPPED(exit_status)){
+
+                                clean_exec_vars(argv, envp);
+                                clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
+
                                 if(suspend_job(leader_job) != 0){
                                     dprintf(std_fd_err, "Error during job suspension\n");
                                     close(err_pipe[0]);
@@ -279,7 +285,7 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
 
                             set_shell_foreground();
 
-                            return exec_res_from_waitpid_status(exit_status);
+                            exec_res = exec_res_from_waitpid_status(exit_status);
                     }
                 } 
                 else { // already in a forked process
