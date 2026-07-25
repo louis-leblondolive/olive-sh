@@ -339,35 +339,6 @@ int setup_redirs(env_t *env, ast_node_t *cmd_node, int *fd_in, int *fd_out){
 }
 
 
-int setup_params(env_t *env, ast_node_t *cmd_node, int *argc, char ***argv, char ***envp){
-    
-    *argc = count_args(cmd_node->argv);
-    print_debug("argc setup\n");
-
-    *argv = arg_chain_to_array(env, cmd_node->argv);
-    if(!*argv){
-        char *unbound_info = expand_var(env, "ERRLOG");
-        env_export(env, "ERRLOG", "olive-sh: failed to resolve argument chain (%s)", unbound_info);
-        free(unbound_info);
-        return -1;
-    }
-    print_debug("argv setup\n");
-    
-    *envp = env_chain_to_array(env);
-    if(!*envp){
-        char *unbound_info = expand_var(env, "ERRLOG");
-        env_export(env, "ERRLOG", "olive-sh: couldn't resolve environment (%s)\n", unbound_info);
-        
-        free(unbound_info);
-        free_arg_array(*argv);
-        return -1;
-    }
-    print_debug("envp setup\n");
-
-    return 0;
-}
-
-
 void relay_child_error(int err_pipe_fd, int target_fd){
 
     char errlog[MAX_ERROR_LEN];

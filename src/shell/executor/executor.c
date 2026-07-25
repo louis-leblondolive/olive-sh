@@ -40,9 +40,15 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
 
         case TOKEN_PIPE: {
 
-            bool is_leader = is_shell_foreground();
-
             char *cmd = strdup(ast->str_cmd);
+
+            if(cfg_infos.interactive == false){ // fast path when not a tty
+                exec_res_t pipe_res = run_pipe_children(env, ast, getpid(), std_fd_in, std_fd_out, std_fd_err);
+                free(cmd);
+                return pipe_res;
+            }
+
+            bool is_leader = is_shell_foreground();
             job_t *leader_job = NULL;
 
             if(is_leader){
@@ -57,6 +63,7 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
 
                     case -1:    
                         perror("fork");
+                        free(cmd);
                         return exec_res_from_builtin(1);
 
                     case 0: 
@@ -157,18 +164,20 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
         case TOKEN_WORD: {   // Running command
 
             // ----- SET ARGUMENTS UP -----
-            int argc = 0; 
-            char **argv = NULL;
             char **envp = NULL;
 
-            if(setup_params(env, ast, &argc, &argv, &envp) != 0){
+            // Setup argv
+            int argc = count_args(ast->argv); 
+            print_debug("argc setup\n");
 
-                char *errlog = expand_var(env, "ERRLOG");
-                write(std_fd_err, errlog, strlen(errlog));
-                clean_exec_vars(argv, envp);
-
+            char **argv = arg_chain_to_array(env, ast->argv);
+            if(!argv){
+                char *unbound_info = expand_var(env, "ERRLOG");
+                env_export(env, "ERRLOG", "olive-sh: failed to resolve argument chain (%s)", unbound_info);
+                free(unbound_info);
                 return exec_res_from_builtin(1);
             }
+            print_debug("argv setup\n");
 
             if(cfg_infos.xtrace){
                 char *ps4 = expand_var(env, "PS4");
@@ -202,31 +211,32 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
                 if(exec_res.kind == RES_EXITED && exec_res.exit_code != 0){
                     char *errlog = expand_var(env, "ERRLOG");
                     write(std_fd_err, errlog, strlen(errlog));
+                    free(errlog);
                 }
             }
             
             else { // ----------------------------- Run external command 
 
-                bool is_leader = is_shell_foreground();
+                // --- Setup envp 
+                envp = env_chain_to_array(env);
+                if(!envp){
+                    char *unbound_info = expand_var(env, "ERRLOG");
+                    env_export(env, "ERRLOG", "olive-sh: couldn't resolve environment (%s)\n", unbound_info);
+                    
+                    free(unbound_info);
+                    clean_exec_vars(argv, envp);
+                    clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
+                    return exec_res_from_builtin(1);
+                }
+                print_debug("envp setup\n");
 
-                if(is_leader){
+                // --- Run command
 
-                    int err_pipe[2];
-                    if(open_cloexec_pipe(err_pipe) != 0){
-                        clean_exec_vars(argv, envp);
-                        clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
-                        return exec_res_from_builtin(1);
-                    }
+                if(!cfg_infos.interactive){ // no job control if shell isn't a tty 
+                    pid_t pid = fork();
 
-                    char *cmd = strdup(ast->str_cmd);
-                    job_t *leader_job = NULL;
-                    int exit_status = -1;
-
-                    pid_t leader_pid = fork();
-                    switch(leader_pid){
-
+                    switch(pid){
                         case -1:
-                            perror("fork");
                             clean_exec_vars(argv, envp);
                             clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
                             return exec_res_from_builtin(1);
@@ -236,64 +246,105 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
                                 perror("signal");
                                 exit(1);
                             }
+                            exit(run_cmd_async(env, argv, envp, fd_in, fd_out, std_fd_err));
 
-                            leader_pid = getpid();
-                            setpgid(0, leader_pid);
-
-                                // Init leader job  
-                            
-                            leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
-                            set_foreground_job(leader_job);
-
-                                // Run command
-                            exit_status = run_cmd_async(env, argv, envp, fd_in, fd_out, err_pipe[1]);
-                            close_pipe(err_pipe);
-
-                            exit(exit_status);
-
-
-                        default:
-                            close(err_pipe[1]);
-
-                                // Init leader job  
-                            leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
-                            set_foreground_job(leader_job);
-
-                                // Run command foreground
-                            setpgid(leader_pid, leader_pid);
-                            tcsetpgrp(STDIN_FILENO, leader_pid);
-
-                            waitpid(leader_pid, &exit_status, WUNTRACED);
-
-                                // Clean and exit 
-                            if(WIFSTOPPED(exit_status)){
-
-                                clean_exec_vars(argv, envp);
-                                clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
-
-                                if(suspend_job(leader_job) != 0){
-                                    dprintf(std_fd_err, "Error during job suspension\n");
-                                    close(err_pipe[0]);
-                                    return exec_res_from_builtin(1);
-                                }
-
-                                return exec_res_from_waitpid_status(exit_status);
-                            }
-
-                            if(exit_status != 0) relay_child_error(err_pipe[0], std_fd_err);
-                            close(err_pipe[0]);
-
-                            set_shell_foreground();
-
+                        default: {
+                            int exit_status; 
+                            waitpid(pid, &exit_status, 0);
                             exec_res = exec_res_from_waitpid_status(exit_status);
+                        }
                     }
-                } 
-                else { // already in a forked process
-
-                    int exit_status = run_cmd_async(env, argv, envp, fd_in, fd_out, std_fd_err);
-                    exec_res = exec_res_from_builtin(exit_status);
                 }
 
+                else {
+                    bool is_leader = is_shell_foreground();
+
+                    if(is_leader){
+
+                        int err_pipe[2];
+                        if(open_cloexec_pipe(err_pipe) != 0){
+                            clean_exec_vars(argv, envp);
+                            clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
+                            return exec_res_from_builtin(1);
+                        }
+
+                        char *cmd = strdup(ast->str_cmd);
+                        job_t *leader_job = NULL;
+                        int exit_status = -1;
+
+                        pid_t leader_pid = fork();
+                        switch(leader_pid){
+
+                            case -1:
+                                perror("fork");
+                                clean_exec_vars(argv, envp);
+                                clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
+                                return exec_res_from_builtin(1);
+
+                            case 0:
+                                if(reset_sa_handlers() != 0){
+                                    perror("signal");
+                                    exit(1);
+                                }
+
+                                leader_pid = getpid();
+                                setpgid(0, leader_pid);
+
+                                    // Init leader job  
+                                
+                                leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
+                                set_foreground_job(leader_job);
+
+                                    // Run command
+                                exit_status = run_cmd_async(env, argv, envp, fd_in, fd_out, err_pipe[1]);
+                                close_pipe(err_pipe);
+
+                                exit(exit_status);
+
+
+                            default:
+                                close(err_pipe[1]);
+
+                                    // Init leader job  
+                                leader_job = job_init(leader_pid, leader_pid, err_pipe[0], cmd);
+                                set_foreground_job(leader_job);
+
+                                    // Run command foreground
+                                setpgid(leader_pid, leader_pid);
+                                tcsetpgrp(STDIN_FILENO, leader_pid);
+
+                                waitpid(leader_pid, &exit_status, WUNTRACED);
+
+                                    // Clean and exit 
+                                if(WIFSTOPPED(exit_status)){
+
+                                    clean_exec_vars(argv, envp);
+                                    clean_io_fds(fd_in, fd_out, std_fd_in, std_fd_out);
+
+                                    if(suspend_job(leader_job) != 0){
+                                        dprintf(std_fd_err, "Error during job suspension\n");
+                                        close(err_pipe[0]);
+                                        return exec_res_from_builtin(1);
+                                    }
+
+                                    return exec_res_from_waitpid_status(exit_status);
+                                }
+
+                                if(exit_status != 0) relay_child_error(err_pipe[0], std_fd_err);
+                                close(err_pipe[0]);
+
+                                set_shell_foreground();
+
+                                exec_res = exec_res_from_waitpid_status(exit_status);
+                        }
+                    } 
+                    else { // already in a forked process
+
+                        int exit_status = run_cmd_async(env, argv, envp, fd_in, fd_out, std_fd_err);
+                        exec_res = exec_res_from_builtin(exit_status);
+                    }
+                    
+                } // end if interactive 
             } // end run external
 
 

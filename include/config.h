@@ -27,6 +27,9 @@ typedef struct config_infos_s {
     bool pipefail;  /** Pipeline error status reflects the first failing command. */
     bool errexit;   /** Shell exits on any command failure. */
     bool nounset;   /** Treats unset variable expansion as an error. */
+
+    // tty detection 
+    bool interactive; /** True if the shell is interactive */
     
 } config_infos_t;
 

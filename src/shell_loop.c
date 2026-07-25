@@ -8,7 +8,6 @@ int run_shell(char **envp){
     int exit_res = 0;
 
     // ----- SHELL INIT -----------------------------------------------------------------------------
-    bool interactive = isatty(STDIN_FILENO);
     int init_res = 0;
 
     // Init readline hook
@@ -72,7 +71,7 @@ int run_shell(char **envp){
         if(sigsetjmp(jump_buffer, 1) != 0){
             if(lex_res.tk_chain) free_token_chain(lex_res.tk_chain);
             if(parse_res.ast) free_ast(parse_res.ast);
-            if(interactive){
+            if(cfg_infos.interactive){
                 rl_free_line_state();
                 rl_cleanup_after_signal();
             } 
@@ -85,7 +84,7 @@ int run_shell(char **envp){
         // Read user command line
         char *line = NULL;
         
-        if(interactive) line = readline("> ");
+        if(cfg_infos.interactive) line = readline("> ");
         else {
             size_t buf_size = 0;
             ssize_t n = getline(&line, &buf_size, stdin);
@@ -97,7 +96,7 @@ int run_shell(char **envp){
         jump_active = 0;
         
         if(!line) break;
-        if(interactive && *line) add_history(line);
+        if(cfg_infos.interactive && *line) add_history(line);
 
 
         // ----- LEXING ----------------------------------------------------- 

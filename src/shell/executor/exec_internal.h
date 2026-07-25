@@ -101,20 +101,6 @@ int setup_redirs(env_t *env, ast_node_t *cmd_node, int *fd_in, int *fd_out);
 
 
 /**
- * @brief Formats command arguments and environment. 
- * 
- * @param env         A pointer to the environment. 
- * @param cmd_node    A pointer to the command node. 
- * @param argc        A pointer to the argc field to be assigned by this function. 
- * @param argv        A pointer to the argv table to be allocated and filled by this function. 
- * @param envp        A pointer to the envp table to be allocated and filled by this function. 
- * 
- * @return 0 on success, -1 otherwise. 
- */
-int setup_params(env_t *env, ast_node_t *cmd_node, int *argc, char ***argv, char ***envp);
-
-
-/**
  * @brief Relays a child process error from its error output to the targeted file descriptor. 
  */
 void relay_child_error(int err_pipe_fd, int target_fd);
