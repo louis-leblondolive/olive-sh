@@ -43,7 +43,7 @@ exec_res_t run_ast(env_t *env, ast_node_t *ast,
             char *cmd = strdup(ast->str_cmd);
 
             if(cfg_infos.interactive == false){ // fast path when not a tty
-                exec_res_t pipe_res = run_pipe_children(env, ast, getpid(), std_fd_in, std_fd_out, std_fd_err);
+                exec_res_t pipe_res = run_pipe_children(env, ast, getpgrp(), std_fd_in, std_fd_out, std_fd_err);
                 free(cmd);
                 return pipe_res;
             }
