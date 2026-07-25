@@ -2,6 +2,8 @@
 #include <stdio.h>
 
 builtin_t builtins[] = {
+    {"true", builtin_true},
+    {"false", builtin_false},
     {"echo", builtin_echo},
     {"export", builtin_export},
     {"unset", builtin_unset},

@@ -12,6 +12,8 @@ typedef struct builtin_s {
 
 extern builtin_t builtins[];
 
+exec_res_t builtin_true(int argc, char **argv, env_t *env);
+exec_res_t builtin_false(int argc, char **argv, env_t *env);
 exec_res_t builtin_echo(int argc, char **argv, env_t *env);
 exec_res_t builtin_export(int argc, char **argv, env_t *env);
 exec_res_t builtin_unset(int argc, char **argv, env_t *env);
