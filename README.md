@@ -275,7 +275,7 @@ WORD - segment chain :   (LITERAL)[ls]
 >This output can be seen directly in the shell. To do so, enable the `--debug` option.
 
 #### FSM implementation 
-A simplified version of the FSM used to build the lexer is depicted below. A complete version of this flowchart and its transition matrix are available in the lexer [documentation]().
+A simplified version of the FSM used to build the lexer is depicted below. A complete version of this flowchart and its transition matrix are available in the lexer [documentation](docs/lexer.md).
 
 ```mermaid
 stateDiagram-v2
