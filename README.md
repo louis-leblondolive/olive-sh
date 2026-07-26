@@ -4,6 +4,10 @@
 
 A minimalist POSIX shell built in C from scratch. This project was initially developed as a deep dive into POSIX interprocess communication and signal management, and continues to be regularly updated. 
 
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="olive-sh demo" />
+</p>
+
 >[!IMPORTANT]
 >This project includes macOS and Linux support.
 
