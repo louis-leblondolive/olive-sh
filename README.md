@@ -7,7 +7,7 @@ A minimalist POSIX shell built in C from scratch. This project was initially dev
 >[!IMPORTANT]
 >This project includes macOS and Linux support.
 
-## Table-of-Contents
+## Table of Contents
 * [Main Features](#main-features)
 * [Build and Run](#build-and-run)
 * [Usage](#usage)
@@ -15,10 +15,11 @@ A minimalist POSIX shell built in C from scratch. This project was initially dev
 * [Repository Structure](#repository-structure)
 * [Tests](#tests)
 * [Benchmark](#benchmark)
+* [Known Limitations](#known-limitations)
 * [References](#references)
 
 
-## Main-Features
+## Main Features
 - **AST-based interpreter** - the input goes through a FSM-based lexer, producing a token stream, then a recursive descent parser that emits an AST, which the executor runs recursively. Clean separation between lexing, parsing and execution. 
 - **Command execution** - `$PATH` resolution, logic operators (`&&`, `||`) and correct `$?` exit-status propagation. 
 - **Pipes and redirection** - multiple pipe chains (`|`), `>`, `>>` and `<`.
@@ -28,7 +29,7 @@ A minimalist POSIX shell built in C from scratch. This project was initially dev
 - **Builtins** - `echo`, `cd`, `pwd`, `export`/`unset`, `env`, `exit`, `jobs`, `bg`/`fg` plus `errlog` (structured error management) and `olvsh` (runtime option management).
 
 
-## Build-and-Run 
+## Build and Run 
 
 The following conditions are prerequisites:
 - macOS or Linux (see [Important] notice above)
@@ -228,7 +229,7 @@ Three custom options are also implemented:
 | `debug`  | display information about interpreting    | disabled |
 
 
-## Technical-Deep-Dive
+## Technical Deep Dive
 
 ### Shell general architecture
 
@@ -255,7 +256,7 @@ flowchart LR
 
 ### Lexer
 
-Instead of using fragile string splitting, `olive-sh` lexer uses a Finite State Machine (FSM) to ensure parsing robustness. 
+Instead of using fragile string splitting, `olive-sh`'s lexer uses a Finite State Machine (FSM) to ensure parsing robustness. 
 
 
 #### Lexer output example 
@@ -311,7 +312,7 @@ IN_DOLLAR_IN_DB_QUOTE --> IN_DB_QUOTE : *
 
 
 ### Parser 
-`olive-sh` parser relies on recursive descent: each precedence level is a function that calls the next tighter-binding level. It produces an Abstract Syntax Tree (AST), whose nodes are labelled with operators and leaves store commands.  The parser follows the following grammar, from `;`/`&` (loosest) to `|` (tightest). Note that `&&` and `||` are treated on two different levels to give `&&` higher precedence, matching bash’s behaviour : 
+`olive-sh`'s parser relies on recursive descent: each precedence level is a function that calls the next tighter-binding level. It produces an Abstract Syntax Tree (AST), whose nodes are labelled with operators and leaves store commands.  The parser follows the following grammar, from `;`/`&` (loosest) to `|` (tightest). Note that `&&` and `||` are treated on two different levels to give `&&` higher precedence, matching bash’s behaviour : 
 
 
 | Level      | Expression parsed                             |
@@ -351,17 +352,17 @@ To parse commands, the parser simply consumes `WORD` tokens and assigns them to 
 
 ### Executor 
 
-`olive-sh` executor consists in recursively roaming the AST. Each call returns a tagged union (`exec_res_t`) indicating whether the process was stopped, terminated by a signal, or exited normally, and the resulting exit code or signal number. The tag prevents misinterpreting an exit code as a signal number, which a simple int status couldn't guarantee. 
+`olive-sh`'s executor consists in recursively roaming the AST. Each call returns a tagged union (`exec_res_t`) indicating whether the process was stopped, terminated by a signal, or exited normally, and the resulting exit code or signal number. The tag prevents misinterpreting an exit code as a signal number, which a simple int status couldn't guarantee. 
 
 When meeting an operator node, the behaviour of the executor depends on its type. Sequential operators (`;`, `&&`, `||`) run their first child and wait for the result before deciding to run the second: `;` always runs it, while `&&` and `||` run it conditionally on the first child status. The background operator `&` is also on this level, but doesn't wait: it launches its child asynchronously and immediately proceeds. On the other hand, the (concurrent) pipe operator runs both children at once and links their I/O. 
 
-This distinction matters for process group management. While sequential operators do not modify the pgid or the foregound job, concurrent operators, if the shell itself is in the foreground, fork a leader process,  make it the new foreground job via `setpgid()` and pass its pgid to its children. 
+This distinction matters for process group management. While sequential operators do not modify the pgid or the foreground job, concurrent operators, if the shell itself is in the foreground, fork a leader process,  make it the new foreground job via `setpgid()` and pass its pgid to its children. 
 
 Each command node calculates its own copy of `argv` and `envp`, ensuring that a variable exported earlier in the prompt is visible to commands further on the same line. 
 
 
 ### Job control 
-As the kernel routes signals by `pgid` rather than by `pid`, a `Ctrl+C` or `Ctrl+Z` sent to the shell would reach all its processes, rendering the suspension of an independent command group impossible. `olive-sh` job controller addresses this constraint by grouping each of the command's processes under a common `pgid` (see Executor) and using `tcsetpgrp` to give terminal ownership to this group. The job can be suspended or interrupted as a whole. The currently foreground job is then tracked with a singleton accessor. This centralizes access and avoids races between the SIGCHLD handler and the rest of the shell, which plain global variable wouldn't protect against. 
+As the kernel routes signals by `pgid` rather than by `pid`, a `Ctrl+C` or `Ctrl+Z` sent to the shell would reach all its processes, rendering the suspension of an independent command group impossible. `olive-sh`'s job controller addresses this constraint by grouping each of the command's processes under a common `pgid` (see Executor) and using `tcsetpgrp` to give terminal ownership to this group. The job can be suspended or interrupted as a whole. The currently foreground job is then tracked with a singleton accessor. This centralizes access and avoids races between the SIGCHLD handler and the rest of the shell, which plain global variable wouldn't protect against. 
 
 A job moves through several states, with transitions triggered by signals:
 
@@ -380,7 +381,7 @@ The `fg`/`bg` builtins can directly access the job at the given table index. Whi
 
 
 ### Signal handler 
-Aside from making the shell ignore `Ctrl+C` and `Ctrl+Z` and resetting forked processes' signal handlers, `olive-sh` signal handler is built to avoid reentrancy issues faced when using `readline()` and memory allocation, relying on two different solutions: 
+Aside from making the shell ignore `Ctrl+C` and `Ctrl+Z` and resetting forked processes' signal handlers, `olive-sh`'s signal handler is built to avoid reentrancy issues faced when using `readline()` and memory allocation, relying on two different solutions: 
 
 - As `readline()` uses an internal buffer that a `SIGINT` during read might corrupt, the signal handler uses a `volatile sig_atomic_t` flag indicating if readline is currently running. It can then call `siglongjmp` back to a `sigsetjmp` checkpoint inside the REPL loop which resets `readline()` before its next iteration.
 
@@ -388,7 +389,7 @@ Aside from making the shell ignore `Ctrl+C` and `Ctrl+Z` and resetting forked pr
 
 In order for `SIGCHLD` to indicate the termination of a background job, it cannot be received during foreground command execution. It is therefore suspended during AST execution via `sigprocmask`, and then unblocked when it completes. This ensures any `SIGCHLD` issued during execution will be delivered when it ends instead of being simply ignored and lost. 
 
-## Repository-Structure 
+## Repository Structure 
 This repository has the following structure : 
 ```text
 
@@ -531,9 +532,9 @@ variables                      3.31           4.45      0.74x
 redirection                    3.13           4.25      0.74x
 ```
 
-`olive-sh` competes with `bash` on variable expansion and redirection, but is slightly slower on pipelines execution. It also outperforms `zsh`, mainly because it is far less complex, especially when it comes to edge cases (array or subcommands, for instance, are not supported). Note that `zsh` is slower than `bash` due to its more complex line reading system. 
+`olive-sh` competes with `bash` on variable expansion and redirection, but is slightly slower on pipelines execution. It also outperforms `zsh`, mainly because it is far less complex, especially when it comes to edge cases (array or subcommands, for instance, are not supported). Note that `zsh` is slower than `bash` partly because of its more complex line reading system. 
 
-`olive-sh` was optimized using fast paths for non-tty usages. As the implementation of the environment relies on linked lists (O(n) insertion and reading), it would be beaten by the other shells if the environment was bigger, but isn't a real concern as personal environment usually hold about 50 variables. 
+`olive-sh` was optimized using fast paths for non-tty usages. As the implementation of the environment relies on linked lists (O(n) insertion and reading), it would be beaten by the other shells if the environment was bigger, but isn't a real concern as personal environment usually holds about 50 variables. 
 
 
 ### Benchmark Usage
@@ -554,6 +555,24 @@ The benchmark will use `bash` as a reference by default, running 100 commands fo
 ```bash
 bash test/bench.sh -s zsh bin/olvsh 42
 ``` 
+
+
+## Known-Limitations
+`olive-sh` remains a student project and is therefore limited compared to `bash` or `zsh`. Here is a (non-exhaustive) list of the main known limitations and missing features:
+
+#### Lexing and Parsing 
+- No brace expansion (e.g. `{1..10}`). Note that naming variables with braces is supported though. 
+- No command substitution (`$(cmd)`) or subshells support.
+- No globbing support. 
+- No arithmetical expansion. 
+
+#### POSIX conformity 
+- No heredoc support (`<<EOF`).
+- Missing builtins, including `test`, `read`, `source`, `trap` and `wait`. 
+
+`olive-sh` also features some non-POSIX features with the [`errlog`](#error-reporting) and [`olvsh`](#runtime-options) builtins. 
+
+A known limitation of the error capture in pipelines is the stderr pipe buffer limit. As the executor runs all the processes in a pipe chain, wait for them to finish and only then read from their error output pipe, a pipe buffer overflow could potentially bring the shell to a dead end. However, this would require a > 64kB `stderr` output which is unlikely for personal usage. 
 
 
 ## References
